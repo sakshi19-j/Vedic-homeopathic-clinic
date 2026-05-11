@@ -684,3 +684,74 @@ def clinicpro_feature_example(
         "feature":
             "ClinicPro feature unlocked"
     }
+
+# =====================================================
+# USAGE DASHBOARD
+# =====================================================
+
+@router.get("/usage")
+def get_usage(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns current month usage vs plan limits.
+    Used by frontend usage dashboard widget.
+    """
+    from app.models.patient import Patient
+    from app.models.staff import Staff
+    from datetime import datetime
+    import pytz
+
+    IST         = pytz.timezone("Asia/Kolkata")
+    now         = datetime.now(IST)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
+
+    if not clinic:
+        raise HTTPException(404, "Clinic not found")
+
+    # Patients this month
+    patients_this_month = db.query(Patient).filter(
+        Patient.clinic_id  == current_user.clinic_id,
+        Patient.created_at >= month_start,
+        Patient.is_active  == True
+    ).count()
+
+    # Active staff
+    active_staff = db.query(Staff).filter(
+        Staff.clinic_id == current_user.clinic_id,
+        Staff.is_active == True
+    ).count()
+
+    max_patients = clinic.max_patients_per_month or 100
+    max_staff    = clinic.max_staff if clinic.max_staff is not None else 0
+
+    return {
+        "plan":    clinic.subscription_plan or "trial",
+        "status":  clinic.subscription_status,
+
+        "patients": {
+            "used":      patients_this_month,
+            "limit":     max_patients,
+            "unlimited": max_patients == -1,
+            "percent":   0 if max_patients == -1 else round((patients_this_month / max_patients) * 100)
+        },
+        "staff": {
+            "used":      active_staff,
+            "limit":     max_staff,
+            "unlimited": max_staff == -1,
+            "percent":   0 if max_staff <= 0 else round((active_staff / max_staff) * 100)
+        },
+        "features": {
+            "pdf_prescriptions": True,
+            "whatsapp":          True,
+            "analytics_export":  clinic.subscription_plan in ["growth", "clinicpro"],
+            "bulk_import":       clinic.subscription_plan in ["growth", "clinicpro"],
+            "multi_doctor":      clinic.subscription_plan == "clinicpro",
+            "priority_support":  clinic.subscription_plan == "clinicpro",
+        }
+    }
