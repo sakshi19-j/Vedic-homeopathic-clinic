@@ -25,10 +25,10 @@ class VisitType(str, enum.Enum):
 
     ALLOPATHY  = "ALLOPATHY"
     HOMEOPATHY = "HOMEOPATHY"
-    AYURVEDIC  = "AYURVEDIC"          # ✅ ADDED — was missing
+    AYURVEDIC  = "AYURVEDIC"
 
 
-class VisitStatus(str, enum.Enum):    # ✅ ADDED — was plain String before
+class VisitStatus(str, enum.Enum):
 
     DRAFT     = "DRAFT"
     ACTIVE    = "ACTIVE"
@@ -99,7 +99,6 @@ class Visit(BaseModel):
 
     # -------------------------------------------------
     # VISIT STATUS
-    # ✅ FIXED — now uses proper SQLEnum instead of plain String
     # -------------------------------------------------
 
     visit_status = Column(
@@ -123,7 +122,12 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    diagnosis = Column(          # ✅ ADDED — needed by analytics top_diseases query
+    diagnosis = Column(
+        String,
+        nullable=True
+    )
+
+    notes = Column(
         String,
         nullable=True
     )
@@ -143,11 +147,6 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    notes = Column(
-        String,
-        nullable=True
-    )
-
     visit_date = Column(
         DateTime,
         default=datetime.utcnow
@@ -155,6 +154,12 @@ class Visit(BaseModel):
 
     closed_at = Column(
         DateTime,
+        nullable=True
+    )
+
+    # ✅ ADDED — prescription PDF URL
+    prescription_url = Column(
+        String,
         nullable=True
     )
 
@@ -322,7 +327,6 @@ class HomeopathyCase(BaseModel):
 
     # -------------------------------------------------
     # PARTICULARS + RUBRICS
-    # Stored as JSON strings
     # -------------------------------------------------
 
     particulars = Column(
