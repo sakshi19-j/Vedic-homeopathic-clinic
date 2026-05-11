@@ -24,27 +24,31 @@ import enum
 class VisitType(str, enum.Enum):
 
     ALLOPATHY  = "ALLOPATHY"
-
     HOMEOPATHY = "HOMEOPATHY"
+    AYURVEDIC  = "AYURVEDIC"          # ✅ ADDED — was missing
+
+
+class VisitStatus(str, enum.Enum):    # ✅ ADDED — was plain String before
+
+    DRAFT     = "DRAFT"
+    ACTIVE    = "ACTIVE"
+    BILLING   = "BILLING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
 class PaymentStatus(str, enum.Enum):
 
     PENDING = "PENDING"
-
     PAID    = "PAID"
-
     WAIVED  = "WAIVED"
 
 
 class PaymentMode(str, enum.Enum):
 
     CASH   = "CASH"
-
     UPI    = "UPI"
-
     ONLINE = "ONLINE"
-
     CARD   = "CARD"
 
 
@@ -95,16 +99,13 @@ class Visit(BaseModel):
 
     # -------------------------------------------------
     # VISIT STATUS
-    # -------------------------------------------------
-    # DRAFT
-    # ACTIVE
-    # COMPLETED
-    # CANCELLED
+    # ✅ FIXED — now uses proper SQLEnum instead of plain String
     # -------------------------------------------------
 
     visit_status = Column(
-        String,
-        default="DRAFT",
+        SQLEnum(VisitStatus),
+        default=VisitStatus.DRAFT,
+        nullable=False,
         index=True
     )
 
@@ -118,6 +119,11 @@ class Visit(BaseModel):
     )
 
     chief_complaint = Column(
+        String,
+        nullable=True
+    )
+
+    diagnosis = Column(          # ✅ ADDED — needed by analytics top_diseases query
         String,
         nullable=True
     )

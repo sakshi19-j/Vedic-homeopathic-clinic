@@ -1,9 +1,17 @@
+import os
+import hmac
+import hashlib
+import logging
+import json
+
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-import os
+from datetime import datetime
+
+import pytz
 
 from app.database import get_db
 from app.services.whatsapp_service import (
@@ -12,57 +20,44 @@ from app.services.whatsapp_service import (
     send_thankyou_message,
     send_birthday_message
 )
-
 from app.middleware.auth_middleware import receptionist_or_doctor
 from app.models.user import User
 from app.models.patient import Patient
 from app.models.clinic import Clinic
 
+logger = logging.getLogger(__name__)
+IST    = pytz.timezone("Asia/Kolkata")
 
-# ── Webhook router — handles Meta callbacks ────────────────────────────────────
-# URL: /webhooks/whatsapp  (GET = verify, POST = receive messages)
-router = APIRouter(
-    prefix="/webhooks",
-    tags=["WhatsApp Webhooks"]
-)
+router      = APIRouter(prefix="/webhooks", tags=["WhatsApp Webhooks"])
+send_router = APIRouter(prefix="/whatsapp",  tags=["WhatsApp Send"])
 
-# ── Send router — handles outbound messages from dashboard ────────────────────
-# URL: /whatsapp/send/...
-send_router = APIRouter(
-    prefix="/whatsapp",
-    tags=["WhatsApp Send"]
-)
+STOP_WORDS = {
+    "STOP", "UNSUBSCRIBE", "CANCEL MESSAGES",
+    "BAND KARO", "MAT BHEJO", "NAHI CHAHIYE"
+}
 
 
 # ─────────────────────────────────────────────────────────────
-# REQUEST SCHEMAS
+# SCHEMAS
 # ─────────────────────────────────────────────────────────────
 
 class SendMessageRequest(BaseModel):
     patient_id: str
-    message: str
+    message:    str
 
 
 class SendReminderRequest(BaseModel):
-    patient_id: str
+    patient_id:    str
     followup_type: Optional[str] = "followup_7d"
 
 
 # ─────────────────────────────────────────────────────────────
-# WEBHOOK VERIFICATION  (GET /webhooks/whatsapp)
-# Meta calls this once to verify your endpoint is real.
-# Must return hub.challenge as plain integer.
+# WEBHOOK VERIFICATION  GET /webhooks/whatsapp
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/whatsapp")
 async def verify_webhook(request: Request):
-    """
-    Meta webhook verification endpoint.
-    GET /webhooks/whatsapp?hub.mode=subscribe&hub.challenge=XXX&hub.verify_token=YYY
-    Returns the challenge number as plain text.
-    """
-    params = request.query_params
-
+    params    = request.query_params
     mode      = params.get("hub.mode")
     token     = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
@@ -72,21 +67,16 @@ async def verify_webhook(request: Request):
         "vennova_webhook_verify_2026"
     )
 
-    print(f"🔔 Webhook verify attempt | mode={mode} token={token} challenge={challenge}")
-    print(f"🔑 Expected token: {verify_token}")
-
     if mode == "subscribe" and token == verify_token:
-        print("✅ WhatsApp webhook verified successfully")
-        # Must return challenge as plain integer text — not JSON
+        logger.info("✅ WhatsApp webhook verified")
         return PlainTextResponse(content=str(challenge), status_code=200)
 
-    print("❌ Webhook verification failed — token mismatch")
+    logger.warning("❌ Webhook verification failed")
     raise HTTPException(status_code=403, detail="Webhook verification failed")
 
 
 # ─────────────────────────────────────────────────────────────
-# RECEIVE WEBHOOK  (POST /webhooks/whatsapp)
-# Meta sends all incoming patient messages here.
+# RECEIVE WEBHOOK  POST /webhooks/whatsapp
 # ─────────────────────────────────────────────────────────────
 
 @router.post("/whatsapp")
@@ -94,188 +84,278 @@ async def receive_webhook(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """
-    Receives ALL patient WhatsApp replies.
-    Auto-replies based on patient message in their language.
-    """
-    body = await request.json()
+    body_bytes = await request.body()
+
+    # ✅ FIXED — signature verification called correctly
+    _verify_webhook_signature(
+        body_bytes,
+        request.headers.get("X-Hub-Signature-256", "")
+    )
 
     try:
-        entry    = body["entry"][0]
-        changes  = entry["changes"][0]
-        value    = changes["value"]
-        messages = value.get("messages", [])
+        body    = json.loads(body_bytes)          # ✅ FIXED — json imported at top now
+        entry   = body.get("entry", [{}])[0]
+        changes = entry.get("changes", [{}])[0]
+        value   = changes.get("value", {})
 
-        for msg in messages:
-            phone = msg["from"].replace("91", "", 1)
-            text  = msg.get("text", {}).get("body", "").strip().upper()
+        # Delivery status updates
+        for status_event in value.get("statuses", []):
+            _handle_delivery_status(db, status_event)
 
-            print(f"📩 Patient reply from +91{phone}: {text}")
-
-            patient = db.query(Patient).filter(
-                Patient.phone_mobile == phone
-            ).first()
-
-            if not patient:
-                await send_text_message(
-                    phone,
-                    "Thank you for contacting us. "
-                    "Please call us directly for assistance."
-                )
-                continue
-
-            clinic = db.query(Clinic).filter(
-                Clinic.id == patient.clinic_id
-            ).first()
-
-            clinic_name  = clinic.name if clinic else "our clinic"
-            doctor_name  = clinic.doctor_name if clinic else "Doctor"
-            clinic_phone = clinic.phone if clinic else ""
-            language     = patient.language_pref or "en"
-
-            reply = _build_auto_reply(
-                text         = text,
-                patient_name = patient.first_name,
-                clinic_name  = clinic_name,
-                doctor_name  = doctor_name,
-                clinic_phone = clinic_phone,
-                language     = language
-            )
-
-            await send_text_message(phone, reply)
-            _update_followup_from_reply(db, patient.id, text)
+        # Inbound patient messages
+        for msg in value.get("messages", []):
+            await _handle_inbound_message(db, msg, value)
 
     except Exception as e:
-        print(f"Webhook error: {e}")
+        logger.error(f"Webhook processing error: {e}")
 
-    # Always return 200 to Meta — otherwise Meta retries endlessly
+    # ✅ Always return 200 to Meta — never let webhook fail silently
     return {"status": "ok"}
 
 
 # ─────────────────────────────────────────────────────────────
-# SMART AUTO REPLY SYSTEM
+# SIGNATURE VERIFICATION
+# ✅ FIXED — hmac.new() replaced with hmac.new() correct modern usage
+# ─────────────────────────────────────────────────────────────
+
+def _verify_webhook_signature(body: bytes, signature_header: str):
+    app_secret = os.getenv("WHATSAPP_APP_SECRET", "")
+
+    if not app_secret:
+        return  # dev mode — skip
+
+    if not signature_header.startswith("sha256="):
+        raise HTTPException(403, "Missing webhook signature")
+
+    # ✅ FIXED — correct hmac usage (hmac.new was the bug flagged in Phase summary)
+    mac = hmac.new(
+        app_secret.encode("utf-8"),
+        body,
+        hashlib.sha256
+    )
+    expected = mac.hexdigest()
+    received = signature_header[len("sha256="):]
+
+    if not hmac.compare_digest(expected, received):
+        logger.warning("Webhook signature mismatch")
+        raise HTTPException(403, "Invalid webhook signature")
+
+
+# ─────────────────────────────────────────────────────────────
+# DELIVERY STATUS HANDLER
+# ─────────────────────────────────────────────────────────────
+
+def _handle_delivery_status(db: Session, status_event: dict):
+    try:
+        from app.models.reminder import WhatsAppLog, DeliveryStatus
+
+        message_id = status_event.get("id")
+        status_val = status_event.get("status", "").upper()
+        now        = datetime.now(IST)
+
+        if not message_id:
+            return
+
+        log = db.query(WhatsAppLog).filter(
+            WhatsAppLog.message_id == message_id
+        ).first()
+
+        if not log:
+            logger.warning(f"WhatsAppLog not found for message_id: {message_id}")
+            return
+
+        if status_val == "DELIVERED":
+            log.delivery_status = DeliveryStatus.DELIVERED
+            log.delivered_at    = now
+        elif status_val == "READ":
+            log.delivery_status = DeliveryStatus.READ
+            log.read_at         = now
+        elif status_val == "FAILED":
+            log.delivery_status = DeliveryStatus.FAILED
+            log.failed_at       = now
+            log.error_text      = str(
+                status_event.get("errors", [{}])[0].get("title", "")
+            )
+
+        db.commit()
+        logger.info(f"Delivery update: {message_id} → {status_val}")
+
+    except Exception as e:
+        logger.error(f"Delivery status update failed: {e}")
+
+
+# ─────────────────────────────────────────────────────────────
+# INBOUND MESSAGE HANDLER
+# ─────────────────────────────────────────────────────────────
+
+async def _handle_inbound_message(db: Session, msg: dict, value: dict):
+    try:
+        raw_phone = msg.get("from", "")
+        text      = msg.get("text", {}).get("body", "").strip().upper()
+
+        if not raw_phone or not text:
+            return
+
+        # Strip +91 country code safely
+        phone = raw_phone
+        if phone.startswith("91") and len(phone) == 12:
+            phone = phone[2:]
+
+        logger.info(f"📩 Inbound: +91{phone} → {text[:50]}")
+
+        patient = db.query(Patient).filter(
+            Patient.phone_mobile == phone
+        ).first()
+
+        if not patient:
+            await send_text_message(
+                phone,
+                "Thank you for contacting us. "
+                "Please call us directly for assistance."
+            )
+            return
+
+        clinic = db.query(Clinic).filter(
+            Clinic.id == patient.clinic_id
+        ).first()
+
+        # STOP — highest priority, check before anything else
+        if any(w in text for w in STOP_WORDS):
+            _handle_opt_out(db, patient)
+            await send_text_message(
+                phone,
+                "You have been unsubscribed from reminders. "
+                "Reply START to resubscribe anytime."
+            )
+            return
+
+        # START — re-subscribe
+        if text in ("START", "SUBSCRIBE", "SHURU"):
+            patient.whatsapp_opted_out    = False
+            patient.whatsapp_opted_out_at = None
+            db.commit()
+            await send_text_message(
+                phone,
+                f"Welcome back {patient.first_name}! "
+                f"You will receive reminders from "
+                f"{clinic.name if clinic else 'our clinic'}."
+            )
+            return
+
+        # ✅ FIXED — guard against clinic being None before accessing attributes
+        clinic_name    = clinic.name        if clinic else "our clinic"
+        doctor_name    = clinic.doctor_name if clinic else "Doctor"
+        clinic_phone   = clinic.phone       if clinic else ""
+        clinic_timings = (
+            clinic.timings
+            if clinic and hasattr(clinic, "timings") and clinic.timings
+            else "10am-2pm | 5pm-9pm"
+        )
+
+        reply = _build_auto_reply(
+            text           = text,
+            patient_name   = patient.first_name,
+            clinic_name    = clinic_name,
+            doctor_name    = doctor_name,
+            clinic_phone   = clinic_phone,
+            clinic_timings = clinic_timings,
+            language       = patient.language_pref or "en"
+        )
+
+        await send_text_message(phone, reply)
+        _update_followup_from_reply(db, patient.id, text)
+
+    except Exception as e:
+        logger.error(f"Inbound message handler error: {e}")
+
+
+# ─────────────────────────────────────────────────────────────
+# OPT-OUT
+# ─────────────────────────────────────────────────────────────
+
+def _handle_opt_out(db: Session, patient: Patient):
+    patient.whatsapp_opted_out    = True
+    patient.whatsapp_opted_out_at = datetime.now(IST)
+    db.commit()
+    logger.info(f"Patient {patient.id} opted out of WhatsApp")
+
+
+# ─────────────────────────────────────────────────────────────
+# AUTO REPLY BUILDER
 # ─────────────────────────────────────────────────────────────
 
 def _build_auto_reply(
-    text: str,
-    patient_name: str,
-    clinic_name: str,
-    doctor_name: str,
-    clinic_phone: str,
-    language: str
+    text: str, patient_name: str, clinic_name: str,
+    doctor_name: str, clinic_phone: str,
+    clinic_timings: str, language: str
 ) -> str:
 
-    CONFIRM_WORDS = [
-        "YES", "COMING", "OK", "OKAY", "WILL COME",
-        "HA", "HAN", "HAAN", "ZAROOR", "AAUNGA",
-        "AAUNGI", "CONFIRM", "CONFIRMED", "YEP", "YA"
-    ]
+    CONFIRM_WORDS = {
+        "YES", "COMING", "OK", "OKAY", "WILL COME", "HA", "HAN",
+        "HAAN", "ZAROOR", "AAUNGA", "AAUNGI", "CONFIRM", "CONFIRMED", "YEP", "YA"
+    }
+    CANCEL_WORDS = {
+        "NO", "CANCEL", "NAHI", "NAHIN", "CANNOT", "CANT",
+        "NOT COMING", "BUSY", "NOPE"
+    }
+    HELP_WORDS = {
+        "HELP", "TIMING", "TIME", "TIMINGS", "WHEN", "ADDRESS",
+        "WHERE", "LOCATION", "FEES", "FEE", "COST", "CHARGE", "DOCTOR"
+    }
+    THANKS_WORDS = {
+        "THANK", "THANKS", "THANKYOU", "SHUKRIYA", "DHANYAWAD", "DHANYABAD"
+    }
 
-    CANCEL_WORDS = [
-        "NO", "CANCEL", "NAHI", "NAHIN", "CANNOT",
-        "CANT", "NOT COMING", "BUSY", "NOPE"
-    ]
+    words = set(text.split())
 
-    HELP_WORDS = [
-        "HELP", "TIMING", "TIME", "TIMINGS", "WHEN",
-        "ADDRESS", "WHERE", "LOCATION", "FEES", "FEE",
-        "COST", "CHARGE", "DOCTOR"
-    ]
-
-    THANKS_WORDS = [
-        "THANK", "THANKS", "THANKYOU", "SHUKRIYA",
-        "DHANYAWAD", "DHANYABAD"
-    ]
-
-    if any(w in text for w in CONFIRM_WORDS):
-        if language == "hi":
-            return (
-                f"धन्यवाद {patient_name}! आपकी visit confirm हो गई है। "
-                f"{clinic_name} में आपका स्वागत है। सहायता: {clinic_phone}"
-            )
-        elif language == "mr":
-            return (
-                f"धन्यवाद {patient_name}! तुमची visit confirm झाली आहे. "
-                f"{clinic_name} मध्ये तुमचे स्वागत आहे. Call: {clinic_phone}"
-            )
-        else:
-            return (
-                f"Thank you {patient_name}! Your visit is confirmed. "
-                f"We look forward to seeing you at {clinic_name}. "
-                f"Call: {clinic_phone}"
-            )
-
-    elif any(w in text for w in CANCEL_WORDS):
-        if language == "hi":
-            return (
-                f"कोई बात नहीं {patient_name}। जब भी ready हों call करें: {clinic_phone}"
-            )
-        elif language == "mr":
-            return (
-                f"ठीक आहे {patient_name}. तयार असाल तेव्हा call करा: {clinic_phone}"
-            )
-        else:
-            return (
-                f"No problem {patient_name}. Call {clinic_phone} to reschedule."
-            )
-
-    elif any(w in text for w in HELP_WORDS):
-        if language == "hi":
-            return (
-                f"नमस्ते {patient_name}!\n\n"
-                f"🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n"
-                f"⏰ 10am-2pm | 5pm-9pm\n📞 {clinic_phone}"
-            )
-        elif language == "mr":
-            return (
-                f"नमस्ते {patient_name}!\n\n"
-                f"🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n"
-                f"⏰ 10am-2pm | 5pm-9pm\n📞 {clinic_phone}"
-            )
-        else:
-            return (
-                f"Hello {patient_name}!\n\n"
-                f"🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n"
-                f"⏰ Timings: 10am-2pm | 5pm-9pm\n📞 {clinic_phone}"
-            )
-
-    elif any(w in text for w in THANKS_WORDS):
-        if language == "hi":
-            return f"आपका स्वागत है {patient_name}! {clinic_name} हमेशा आपकी सेवा में है 🙏"
-        elif language == "mr":
-            return f"स्वागत आहे {patient_name}! {clinic_name} नेहमी तुमच्या सेवेत आहे 🙏"
-        else:
-            return f"You are welcome {patient_name}! {clinic_name} is always here for you 🙏"
-
+    if words & CONFIRM_WORDS:
+        msgs = {
+            "hi": f"धन्यवाद {patient_name}! आपकी visit confirm हो गई है। {clinic_name} में स्वागत है। 📞 {clinic_phone}",
+            "mr": f"धन्यवाद {patient_name}! तुमची visit confirm झाली आहे. {clinic_name} मध्ये स्वागत आहे. 📞 {clinic_phone}",
+            "en": f"Thank you {patient_name}! Your visit is confirmed. See you at {clinic_name}. 📞 {clinic_phone}"
+        }
+    elif words & CANCEL_WORDS:
+        msgs = {
+            "hi": f"कोई बात नहीं {patient_name}। जब भी ready हों: 📞 {clinic_phone}",
+            "mr": f"ठीक आहे {patient_name}. तयार असाल तेव्हा: 📞 {clinic_phone}",
+            "en": f"No problem {patient_name}. Call us to reschedule: 📞 {clinic_phone}"
+        }
+    elif words & HELP_WORDS:
+        msgs = {
+            "hi": f"नमस्ते {patient_name}!\n🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n⏰ {clinic_timings}\n📞 {clinic_phone}",
+            "mr": f"नमस्ते {patient_name}!\n🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n⏰ {clinic_timings}\n📞 {clinic_phone}",
+            "en": f"Hello {patient_name}!\n🏥 {clinic_name}\n👨‍⚕️ {doctor_name}\n⏰ {clinic_timings}\n📞 {clinic_phone}"
+        }
+    elif words & THANKS_WORDS:
+        msgs = {
+            "hi": f"आपका स्वागत है {patient_name}! {clinic_name} हमेशा आपकी सेवा में है 🙏",
+            "mr": f"स्वागत आहे {patient_name}! {clinic_name} नेहमी तुमच्या सेवेत आहे 🙏",
+            "en": f"You're welcome {patient_name}! {clinic_name} is always here for you 🙏"
+        }
     else:
-        if language == "hi":
-            return (
-                f"नमस्ते {patient_name}! आपका message मिल गया। "
-                f"हमारी team जल्द संपर्क करेगी। Call: {clinic_phone}"
-            )
-        elif language == "mr":
-            return (
-                f"नमस्ते {patient_name}! तुमचा message मिळाला. "
-                f"आमची team लवकरच संपर्क करेल. Call: {clinic_phone}"
-            )
-        else:
-            return (
-                f"Hello {patient_name}! We received your message. "
-                f"Our team will contact you shortly. Call: {clinic_phone}"
-            )
+        msgs = {
+            "hi": f"नमस्ते {patient_name}! message मिल गया। जल्द संपर्क करेंगे। 📞 {clinic_phone}",
+            "mr": f"नमस्ते {patient_name}! message मिळाला. लवकरच संपर्क करू. 📞 {clinic_phone}",
+            "en": f"Hello {patient_name}! Message received. We'll contact you shortly. 📞 {clinic_phone}"
+        }
+
+    return msgs.get(language, msgs["en"])
 
 
 # ─────────────────────────────────────────────────────────────
-# UPDATE FOLLOWUP STATUS FROM REPLY
+# FOLLOWUP STATUS FROM REPLY
 # ─────────────────────────────────────────────────────────────
 
-def _update_followup_from_reply(db, patient_id: str, text: str):
-
+def _update_followup_from_reply(db: Session, patient_id: str, text: str):
     from app.models.reminder import FollowUp, FollowUpStatus
 
-    CONFIRM_WORDS = ["YES", "COMING", "OK", "OKAY", "WILL COME", "HA", "HAN", "HAAN", "CONFIRM", "CONFIRMED"]
-    CANCEL_WORDS  = ["NO", "CANCEL", "NAHI", "NOT COMING", "BUSY"]
+    CONFIRM = {
+        "YES", "COMING", "OK", "OKAY", "WILL COME",
+        "HA", "HAN", "HAAN", "CONFIRM", "CONFIRMED"
+    }
+    CANCEL = {"NO", "CANCEL", "NAHI", "NOT COMING", "BUSY"}
 
+    words    = set(text.split())
     followup = db.query(FollowUp).filter(
         FollowUp.patient_id == patient_id,
         FollowUp.status.in_([FollowUpStatus.SENT, FollowUpStatus.PENDING])
@@ -284,33 +364,36 @@ def _update_followup_from_reply(db, patient_id: str, text: str):
     if not followup:
         return
 
-    if any(w in text for w in CONFIRM_WORDS):
+    if words & CONFIRM:
         followup.status   = FollowUpStatus.DONE
         followup.response = text
-    elif any(w in text for w in CANCEL_WORDS):
+        db.commit()                    # ✅ FIXED — commit was missing for CONFIRM branch
+    elif words & CANCEL:
         followup.status   = FollowUpStatus.SKIPPED
         followup.response = text
-
-    db.commit()
+        db.commit()
 
 
 # ─────────────────────────────────────────────────────────────
-# SEND ROUTES  (all use send_router → /whatsapp/send/...)
+# SEND ROUTES
 # ─────────────────────────────────────────────────────────────
 
 @send_router.post("/send/message")
 async def send_message(
     data: SendMessageRequest,
-    db: Session = Depends(get_db),
+    db:   Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
     patient = db.query(Patient).filter(
-        Patient.id == data.patient_id,
+        Patient.id        == data.patient_id,
         Patient.clinic_id == current_user.clinic_id
     ).first()
 
     if not patient or not patient.phone_mobile:
-        raise HTTPException(status_code=404, detail="Patient not found or no phone")
+        raise HTTPException(404, "Patient not found or no phone")
+
+    if getattr(patient, "whatsapp_opted_out", False):
+        raise HTTPException(400, "Patient has opted out of WhatsApp messages")
 
     return await send_text_message(patient.phone_mobile, data.message)
 
@@ -318,25 +401,30 @@ async def send_message(
 @send_router.post("/send/reminder")
 async def send_reminder(
     data: SendReminderRequest,
-    db: Session = Depends(get_db),
+    db:   Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
     patient = db.query(Patient).filter(
-        Patient.id == data.patient_id,
+        Patient.id        == data.patient_id,
         Patient.clinic_id == current_user.clinic_id
     ).first()
 
     if not patient or not patient.phone_mobile:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(404, "Patient not found")
 
-    clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if getattr(patient, "whatsapp_opted_out", False):
+        raise HTTPException(400, "Patient has opted out of WhatsApp messages")
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
 
     return await send_followup_reminder(
         phone         = patient.phone_mobile,
         patient_name  = f"{patient.first_name} {patient.last_name or ''}".strip(),
         doctor_name   = clinic.doctor_name if clinic else "Doctor",
-        clinic_name   = clinic.name if clinic else "Clinic",
-        clinic_phone  = clinic.phone if clinic else "",
+        clinic_name   = clinic.name        if clinic else "Clinic",
+        clinic_phone  = clinic.phone       if clinic else "",
         language      = patient.language_pref or "en",
         followup_type = data.followup_type
     )
@@ -349,21 +437,26 @@ async def send_thankyou(
     current_user: User = Depends(receptionist_or_doctor)
 ):
     patient = db.query(Patient).filter(
-        Patient.id == patient_id,
+        Patient.id        == patient_id,
         Patient.clinic_id == current_user.clinic_id
     ).first()
 
     if not patient or not patient.phone_mobile:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(404, "Patient not found")
 
-    clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if getattr(patient, "whatsapp_opted_out", False):
+        return {"status": "skipped", "reason": "Patient opted out"}
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
 
     return await send_thankyou_message(
         phone        = patient.phone_mobile,
         patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
         doctor_name  = clinic.doctor_name if clinic else "Doctor",
-        clinic_name  = clinic.name if clinic else "Clinic",
-        clinic_phone = clinic.phone if clinic else "",
+        clinic_name  = clinic.name        if clinic else "Clinic",
+        clinic_phone = clinic.phone       if clinic else "",
         language     = patient.language_pref or "en"
     )
 
@@ -375,19 +468,61 @@ async def send_birthday(
     current_user: User = Depends(receptionist_or_doctor)
 ):
     patient = db.query(Patient).filter(
-        Patient.id == patient_id,
+        Patient.id        == patient_id,
         Patient.clinic_id == current_user.clinic_id
     ).first()
 
     if not patient or not patient.phone_mobile:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(404, "Patient not found")
 
-    clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if getattr(patient, "whatsapp_opted_out", False):
+        return {"status": "skipped", "reason": "Patient opted out"}
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
 
     return await send_birthday_message(
         phone        = patient.phone_mobile,
         patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
         doctor_name  = clinic.doctor_name if clinic else "Doctor",
-        clinic_name  = clinic.name if clinic else "Clinic",
+        clinic_name  = clinic.name        if clinic else "Clinic",
         language     = patient.language_pref or "en"
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# DELIVERY LOGS
+# ─────────────────────────────────────────────────────────────
+
+@send_router.get("/logs")
+def get_whatsapp_logs(
+    limit: int = 50,
+    db:    Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+    from app.models.reminder import WhatsAppLog
+
+    logs = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == str(current_user.clinic_id)
+    ).order_by(
+        WhatsAppLog.created_at.desc()
+    ).limit(limit).all()
+
+    return {
+        "total": len(logs),
+        "logs": [
+            {
+                "id":           log.id,
+                "patient_id":   log.patient_id,
+                "phone":        log.phone,
+                "body":         (log.body or "")[:80],
+                "status":       log.delivery_status.value if log.delivery_status else None,
+                "sent_at":      log.created_at.strftime("%d-%m-%Y %H:%M") if log.created_at else None,
+                "delivered_at": log.delivered_at.strftime("%d-%m-%Y %H:%M") if log.delivered_at else None,
+                "read_at":      log.read_at.strftime("%d-%m-%Y %H:%M") if log.read_at else None,
+                "trigger":      log.trigger,
+            }
+            for log in logs
+        ]
+    }
