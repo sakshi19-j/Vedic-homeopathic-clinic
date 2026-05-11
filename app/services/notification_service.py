@@ -329,3 +329,47 @@ def send_notification(
 
     # DEFAULT = WHATSAPP
     return send_whatsapp(phone, message)
+
+# ─────────────────────────────────────────────────────────────
+# META CLOUD API SENDER (primary — replaces Twilio)
+# ─────────────────────────────────────────────────────────────
+
+async def send_whatsapp_meta(phone: str, message: str) -> dict:
+    """
+    Send WhatsApp via Meta Cloud API.
+    Used by cron jobs — async.
+    """
+    import httpx, os
+    token           = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+
+    if not token or not phone_number_id:
+        print(f"📱 MOCK → +91{phone}: {message[:60]}...")
+        return {"status": "mocked", "phone": phone}
+
+    # Normalize phone
+    clean = phone.strip().lstrip("+").lstrip("91").replace(" ", "").replace("-", "")
+
+    url     = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type":    "individual",
+        "to":                f"91{clean}",
+        "type":              "text",
+        "text":              {"body": message}
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(url, headers=headers, json=payload, timeout=10.0)
+            data = resp.json()
+            if resp.status_code == 200:
+                return {
+                    "status":     "sent",
+                    "message_id": data.get("messages", [{}])[0].get("id", ""),
+                    "phone":      clean
+                }
+            return {"status": "failed", "error": data.get("error", {}).get("message"), "phone": clean}
+        except Exception as e:
+            return {"status": "failed", "error": str(e), "phone": clean}

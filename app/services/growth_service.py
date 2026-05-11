@@ -223,3 +223,92 @@ def flag_missed_patients(
     db.commit()
 
     return flagged
+
+# =========================================================
+# Birthday Patients — due today
+# =========================================================
+def get_birthday_patients(db: Session, clinic_id: str) -> list:
+    """
+    Returns all patients whose birthday is today.
+    Checks month + day only (ignores year).
+    """
+    from app.models.patient import Patient
+    today = datetime.now(IST).date()
+
+    patients = db.query(Patient).filter(
+        Patient.clinic_id  == clinic_id,
+        Patient.is_active  == True,
+        Patient.dob        != None,
+        Patient.whatsapp_opt_out == False
+    ).all()
+
+    birthday_patients = []
+    for p in patients:
+        if p.dob and p.dob.month == today.month and p.dob.day == today.day:
+            birthday_patients.append(p)
+
+    return birthday_patients
+
+
+# =========================================================
+# Missed Patient Re-engagement List
+# =========================================================
+def get_reengagement_patients(db: Session, clinic_id: str) -> list:
+    """
+    Returns missed patients at 30 / 60 / 90 day marks.
+    Only returns patients exactly on those milestones (±1 day grace).
+    """
+    from app.models.patient import Patient
+    now   = datetime.now(IST)
+    today = now.date()
+
+    patients = db.query(Patient).filter(
+        Patient.clinic_id    == clinic_id,
+        Patient.is_active    == True,
+        Patient.is_missed    == True,
+        Patient.missed_since != None,
+        Patient.whatsapp_opt_out == False
+    ).all()
+
+    targets = []
+    for p in patients:
+        if not p.missed_since:
+            continue
+        missed_date = p.missed_since.date() if hasattr(p.missed_since, 'date') else p.missed_since
+        days_missed = (today - missed_date).days
+
+        # Hit 30 / 60 / 90 day marks (±1 day window)
+        if days_missed in range(29, 32) or \
+           days_missed in range(59, 62) or \
+           days_missed in range(89, 92):
+            targets.append({
+                "patient":     p,
+                "days_missed": days_missed
+            })
+
+    return targets
+
+
+# =========================================================
+# Appointment Reminders Due
+# =========================================================
+def get_appointment_reminders(db: Session, clinic_id: str, hours_ahead: int) -> list:
+    """
+    Returns appointments happening in exactly `hours_ahead` hours.
+    Used for 24hr and 1hr reminders.
+    """
+    from app.models.appointment import Appointment
+    now        = datetime.now(IST)
+    target     = now + timedelta(hours=hours_ahead)
+    window_start = target - timedelta(minutes=15)
+    window_end   = target + timedelta(minutes=15)
+
+    appointments = db.query(Appointment).filter(
+        Appointment.clinic_id      == clinic_id,
+        Appointment.status         == "SCHEDULED",
+        Appointment.scheduled_time >= window_start,
+        Appointment.scheduled_time <= window_end,
+        Appointment.reminder_sent  == False
+    ).all()
+
+    return appointments
