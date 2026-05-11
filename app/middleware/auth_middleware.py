@@ -95,6 +95,33 @@ def check_subscription(
 
 
 # =====================================================
+# PERMISSION MATRIX
+# =====================================================
+
+# What each role CANNOT access
+ROLE_RESTRICTIONS = {
+    "RECEPTIONIST": [
+        "revenue",
+        "analytics",
+        "billing_summary",
+        "export",
+        "audit",
+        "subscription"
+    ],
+
+    "NURSE": [
+        "revenue",
+        "billing_summary",
+        "export",
+        "audit",
+        "subscription"
+    ],
+
+    "DOCTOR": []
+}
+
+
+# =====================================================
 # ROLE GUARDS
 # =====================================================
 
@@ -104,8 +131,11 @@ def doctor_only(
 
     if current_user.role != UserRole.DOCTOR:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Doctor role required."
+            status_code=403,
+            detail={
+                "message": "This action requires doctor access.",
+                "code": "DOCTOR_ONLY"
+            }
         )
 
     return current_user
@@ -114,6 +144,41 @@ def doctor_only(
 def receptionist_or_doctor(
     current_user: User = Depends(get_current_user)
 ) -> User:
+
+    allowed = [
+        UserRole.DOCTOR,
+        UserRole.RECEPTIONIST
+    ]
+
+    if current_user.role not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Access denied.",
+                "code": "INSUFFICIENT_ROLE"
+            }
+        )
+
+    return current_user
+
+
+def block_receptionist_from_revenue(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Blocks receptionist from seeing revenue/billing data.
+    Use on analytics and billing summary endpoints.
+    """
+
+    if current_user.role == UserRole.RECEPTIONIST:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Revenue data is only visible to doctors.",
+                "code": "REVENUE_RESTRICTED"
+            }
+        )
+
     return current_user
 
 

@@ -8,7 +8,8 @@ from app.services import analytics_service
 from app.middleware.auth_middleware import (
     doctor_only,
     get_current_user,
-    require_plan
+    require_plan,
+    block_receptionist_from_revenue
 )
 
 from app.models.user import User
@@ -28,8 +29,13 @@ router = APIRouter(
 def get_dashboard(
     db: Session = Depends(get_db),
 
-    # Growth+ only
+    # Revenue restriction
     current_user: User = Depends(
+        block_receptionist_from_revenue
+    ),
+
+    # Growth+ only
+    plan_user: User = Depends(
         require_plan("growth")
     )
 ):
@@ -89,7 +95,12 @@ def get_dashboard(
 def get_daily_revenue(
     db: Session = Depends(get_db),
 
+    # Revenue restriction
     current_user: User = Depends(
+        block_receptionist_from_revenue
+    ),
+
+    plan_user: User = Depends(
         require_plan("starter")
     )
 ):
@@ -111,7 +122,12 @@ def get_daily_revenue(
 def get_monthly_revenue(
     db: Session = Depends(get_db),
 
+    # Revenue restriction
     current_user: User = Depends(
+        block_receptionist_from_revenue
+    ),
+
+    plan_user: User = Depends(
         require_plan("growth")
     )
 ):
@@ -225,8 +241,13 @@ def get_followups_today(
 def summary_today(
     db: Session = Depends(get_db),
 
-    # Starter+ can access
+    # Revenue restriction
     current_user: User = Depends(
+        block_receptionist_from_revenue
+    ),
+
+    # Starter+ can access
+    plan_user: User = Depends(
         require_plan("starter")
     )
 ):
@@ -251,8 +272,13 @@ def summary_today(
 def export_analytics(
     db: Session = Depends(get_db),
 
-    # Growth+ only
+    # Revenue restriction
     current_user: User = Depends(
+        block_receptionist_from_revenue
+    ),
+
+    # Growth+ only
+    plan_user: User = Depends(
         require_plan("growth")
     )
 ):

@@ -60,6 +60,11 @@ from app.routers.billing_subscription import (
     router as subscription_router
 )
 
+# Audit Router
+from app.routers.audit import (
+    router as audit_router
+)
+
 
 # =========================================================
 # FASTAPI APP
@@ -241,6 +246,14 @@ app.include_router(
 
 app.include_router(
     subscription_router
+)
+
+# ---------------------------------------------------------
+# AUDIT LOGS
+# ---------------------------------------------------------
+
+app.include_router(
+    audit_router
 )
 
 

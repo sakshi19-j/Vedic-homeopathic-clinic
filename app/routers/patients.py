@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -9,6 +9,7 @@ from app.schemas.patient import (
     PatientResponse
 )
 from app.services import patient_service
+from app.services.audit_service import log_action
 
 from app.middleware.auth_middleware import (
     get_current_user,
@@ -32,7 +33,10 @@ router = APIRouter(
 
 @router.post("/", response_model=PatientResponse)
 def create_patient(
+    request: Request,
+
     data: PatientCreate,
+
     db: Session = Depends(get_db),
 
     # BOTH ROLES + PLAN LIMIT CHECK
@@ -50,6 +54,25 @@ def create_patient(
         db,
         data,
         current_user.clinic_id
+    )
+
+    # =====================================================
+    # AUDIT LOG
+    # =====================================================
+
+    log_action(
+        db=db,
+        user=current_user,
+        action="PATIENT_CREATED",
+        resource="patient",
+        resource_id=patient.id,
+        detail=(
+            f"Registered "
+            f"{patient.first_name} "
+            f"{patient.last_name or ''} "
+            f"({patient.reg_no})"
+        ),
+        ip_address=request.client.host if request else None,
     )
 
     # Build full_name for response

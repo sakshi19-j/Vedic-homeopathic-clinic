@@ -16,6 +16,7 @@ from app.models.user import User
 from app.enums import UserRole
 
 from app.utils.security import hash_password
+from app.services.audit_service import log_action
 
 
 router = APIRouter(
@@ -118,6 +119,19 @@ def create_staff(
     db.commit()
 
     db.refresh(staff)
+
+    # =====================================================
+    # AUDIT LOG
+    # =====================================================
+
+    log_action(
+        db=db,
+        user=current_user,
+        action="STAFF_CREATED",
+        resource="staff",
+        resource_id=staff.id,
+        detail=f"Added staff: {data.name} ({data.role})",
+    )
 
     return {
         "message": "Staff created successfully",
