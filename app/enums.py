@@ -24,14 +24,15 @@ class PatientType(str, Enum):
 class VisitType(str, Enum):
     ALLOPATHY  = "ALLOPATHY"
     HOMEOPATHY = "HOMEOPATHY"
+    AYURVEDIC  = "AYURVEDIC"   # ← ADDED
 
 class QueueStatus(str, Enum):
-    WAITING     = "WAITING"
-    CHECKED_IN  = "CHECKED_IN"
+    WAITING      = "WAITING"
+    CHECKED_IN   = "CHECKED_IN"
     IN_TREATMENT = "IN_TREATMENT"
-    COMPLETED   = "COMPLETED"
-    NO_SHOW     = "NO_SHOW"
-    CANCELLED   = "CANCELLED"
+    COMPLETED    = "COMPLETED"
+    NO_SHOW      = "NO_SHOW"
+    CANCELLED    = "CANCELLED"
 
 class VisitTypeQueue(str, Enum):
     WALKIN      = "WALKIN"
@@ -74,9 +75,9 @@ class SubscriptionPlan(str, Enum):
     ENTERPRISE = "ENTERPRISE"
 
 class SubscriptionStatus(str, Enum):
-    TRIAL    = "TRIAL"
-    ACTIVE   = "ACTIVE"
-    EXPIRED  = "EXPIRED"
+    TRIAL     = "TRIAL"
+    ACTIVE    = "ACTIVE"
+    EXPIRED   = "EXPIRED"
     CANCELLED = "CANCELLED"
 
 class ImportStatus(str, Enum):
@@ -86,15 +87,15 @@ class ImportStatus(str, Enum):
     FAILED     = "FAILED"
 
 class AppointmentStatus(str, Enum):
-    SCHEDULED  = "SCHEDULED"
-    CONFIRMED  = "CONFIRMED"
-    COMPLETED  = "COMPLETED"
-    CANCELLED  = "CANCELLED"
-    NO_SHOW    = "NO_SHOW"
+    SCHEDULED = "SCHEDULED"
+    CONFIRMED = "CONFIRMED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    NO_SHOW   = "NO_SHOW"
 
 class VisitStatus(str, Enum):
-    DRAFT      = "DRAFT"       # started, not complete
-    ACTIVE     = "ACTIVE"      # consultation in progress  
-    BILLING    = "BILLING"     # consultation done, waiting payment
-    COMPLETED  = "COMPLETED"   # paid and closed
-    CANCELLED  = "CANCELLED"
+    DRAFT     = "DRAFT"       # started, not complete
+    ACTIVE    = "ACTIVE"      # consultation in progress
+    BILLING   = "BILLING"     # consultation done, waiting payment
+    COMPLETED = "COMPLETED"   # paid and closed
+    CANCELLED = "CANCELLED"

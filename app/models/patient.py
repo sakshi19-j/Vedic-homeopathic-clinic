@@ -67,14 +67,20 @@ class Patient(BaseModel):
     anniversary = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    # 🔥 Growth Engine Fields (NEW — safe to add now)
+    # 🔥 Growth Engine Fields
     last_visit_date = Column(DateTime, nullable=True)
     expected_followup_days = Column(Integer, default=7)
     total_visits = Column(Integer, default=0)
     total_spent = Column(Numeric(10, 2), default=0)
     patient_value_score = Column(Numeric(5, 2), default=0)
+
     is_missed = Column(Boolean, default=False)
     missed_since = Column(DateTime, nullable=True)
+
+    # ── NEW: WhatsApp opt-out ──────────────────────
+    whatsapp_opted_out = Column(Boolean, default=False)
+    whatsapp_opted_out_at = Column(DateTime, nullable=True)
+    # ──────────────────────────────────────────────
 
     # Relationships
     visits = relationship("Visit", back_populates="patient")

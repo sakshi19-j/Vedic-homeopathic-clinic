@@ -86,36 +86,31 @@ async def receive_webhook(
 ):
     body_bytes = await request.body()
 
-    # ✅ FIXED — signature verification called correctly
     _verify_webhook_signature(
         body_bytes,
         request.headers.get("X-Hub-Signature-256", "")
     )
 
     try:
-        body    = json.loads(body_bytes)          # ✅ FIXED — json imported at top now
+        body    = json.loads(body_bytes)
         entry   = body.get("entry", [{}])[0]
         changes = entry.get("changes", [{}])[0]
         value   = changes.get("value", {})
 
-        # Delivery status updates
         for status_event in value.get("statuses", []):
             _handle_delivery_status(db, status_event)
 
-        # Inbound patient messages
         for msg in value.get("messages", []):
             await _handle_inbound_message(db, msg, value)
 
     except Exception as e:
         logger.error(f"Webhook processing error: {e}")
 
-    # ✅ Always return 200 to Meta — never let webhook fail silently
     return {"status": "ok"}
 
 
 # ─────────────────────────────────────────────────────────────
 # SIGNATURE VERIFICATION
-# ✅ FIXED — hmac.new() replaced with hmac.new() correct modern usage
 # ─────────────────────────────────────────────────────────────
 
 def _verify_webhook_signature(body: bytes, signature_header: str):
@@ -127,7 +122,6 @@ def _verify_webhook_signature(body: bytes, signature_header: str):
     if not signature_header.startswith("sha256="):
         raise HTTPException(403, "Missing webhook signature")
 
-    # ✅ FIXED — correct hmac usage (hmac.new was the bug flagged in Phase summary)
     mac = hmac.new(
         app_secret.encode("utf-8"),
         body,
@@ -143,6 +137,7 @@ def _verify_webhook_signature(body: bytes, signature_header: str):
 
 # ─────────────────────────────────────────────────────────────
 # DELIVERY STATUS HANDLER
+# ✅ ADDED — idempotency guard against duplicate Meta webhooks
 # ─────────────────────────────────────────────────────────────
 
 def _handle_delivery_status(db: Session, status_event: dict):
@@ -162,6 +157,17 @@ def _handle_delivery_status(db: Session, status_event: dict):
 
         if not log:
             logger.warning(f"WhatsAppLog not found for message_id: {message_id}")
+            return
+
+        # ✅ IDEMPOTENCY — skip if this status was already recorded
+        # Meta sends duplicate webhooks sometimes — this prevents double processing
+        already_processed = (
+            (status_val == "DELIVERED" and log.delivered_at is not None) or
+            (status_val == "READ"      and log.read_at is not None)      or
+            (status_val == "FAILED"    and log.failed_at is not None)
+        )
+        if already_processed:
+            logger.info(f"Duplicate webhook ignored: {message_id} → {status_val}")
             return
 
         if status_val == "DELIVERED":
@@ -196,7 +202,6 @@ async def _handle_inbound_message(db: Session, msg: dict, value: dict):
         if not raw_phone or not text:
             return
 
-        # Strip +91 country code safely
         phone = raw_phone
         if phone.startswith("91") and len(phone) == 12:
             phone = phone[2:]
@@ -219,7 +224,7 @@ async def _handle_inbound_message(db: Session, msg: dict, value: dict):
             Clinic.id == patient.clinic_id
         ).first()
 
-        # STOP — highest priority, check before anything else
+        # STOP — highest priority
         if any(w in text for w in STOP_WORDS):
             _handle_opt_out(db, patient)
             await send_text_message(
@@ -242,7 +247,6 @@ async def _handle_inbound_message(db: Session, msg: dict, value: dict):
             )
             return
 
-        # ✅ FIXED — guard against clinic being None before accessing attributes
         clinic_name    = clinic.name        if clinic else "our clinic"
         doctor_name    = clinic.doctor_name if clinic else "Doctor"
         clinic_phone   = clinic.phone       if clinic else ""
@@ -367,7 +371,7 @@ def _update_followup_from_reply(db: Session, patient_id: str, text: str):
     if words & CONFIRM:
         followup.status   = FollowUpStatus.DONE
         followup.response = text
-        db.commit()                    # ✅ FIXED — commit was missing for CONFIRM branch
+        db.commit()
     elif words & CANCEL:
         followup.status   = FollowUpStatus.SKIPPED
         followup.response = text

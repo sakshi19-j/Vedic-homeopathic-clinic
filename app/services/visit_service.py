@@ -42,11 +42,10 @@ CLINIC_FIELDS = {
     ],
 }
 
-# Maps string type to VisitType enum safely
+# Safe type map — built dynamically from actual enum values
+# so adding a new VisitType never needs a change here
 VISIT_TYPE_MAP = {
-    "ALLOPATHY":  VisitType.ALLOPATHY,
-    "HOMEOPATHY": VisitType.HOMEOPATHY,
-    "AYURVEDIC":  VisitType.AYURVEDIC,   # was silently broken before
+    v.value: v for v in VisitType
 }
 
 
@@ -72,25 +71,23 @@ def create_visit(
     doctor_id: str
 ) -> Visit:
 
-    # FIX: was if/else ALLOPATHY → HOMEOPATHY
-    # AYURVEDIC was silently mapped to HOMEOPATHY
     visit_type = VISIT_TYPE_MAP.get(
         (data.type or "HOMEOPATHY").upper(),
         VisitType.HOMEOPATHY
     )
 
     visit = Visit(
-        clinic_id      = clinic_id,
-        patient_id     = data.patient_id,
-        doctor_id      = doctor_id,
-        type           = visit_type,
-        visit_status   = "DRAFT",
+        clinic_id       = clinic_id,
+        patient_id      = data.patient_id,
+        doctor_id       = doctor_id,
+        type            = visit_type,
+        visit_status    = "DRAFT",
         chief_complaint = data.chief_complaint,
-        disease_type   = data.disease_type or "default",
-        fee            = data.fee or 0,
-        notes          = data.notes,
-        episode_id     = data.episode_id,
-        visit_date     = datetime.now(IST)
+        disease_type    = data.disease_type or "default",
+        fee             = data.fee or 0,
+        notes           = data.notes,
+        episode_id      = data.episode_id,
+        visit_date      = datetime.now(IST)
     )
 
     db.add(visit)
@@ -138,12 +135,12 @@ def save_vitals(
         bp = f"{data.bp_systolic}/{data.bp_diastolic}"
 
     return {
-        "message":    "Vitals saved",
-        "weight_kg":  data.weight_kg,
-        "height_cm":  data.height_cm,
-        "bp":         bp,
+        "message":     "Vitals saved",
+        "weight_kg":   data.weight_kg,
+        "height_cm":   data.height_cm,
+        "bp":          bp,
         "temperature": data.temperature,
-        "pulse_rate": data.pulse_rate
+        "pulse_rate":  data.pulse_rate
     }
 
 
@@ -166,8 +163,8 @@ def save_allopathy_rx(
         rx = AllopathyRx(visit_id=visit_id)
         db.add(rx)
 
-    rx.medicines      = json.dumps([m.model_dump() for m in data.medicines])
-    rx.advice         = data.advice
+    rx.medicines       = json.dumps([m.model_dump() for m in data.medicines])
+    rx.advice          = data.advice
     rx.next_visit_date = data.next_visit_date
 
     db.commit()
@@ -199,20 +196,20 @@ def save_homeopathy_case(
         case = HomeopathyCase(visit_id=visit_id)
         db.add(case)
 
-    case.chief_complaint  = data.chief_complaint
-    case.history_present  = data.history_present
-    case.history_past     = data.history_past
-    case.history_surgical = data.history_surgical
-    case.history_family   = data.history_family
+    case.chief_complaint   = data.chief_complaint
+    case.history_present   = data.history_present
+    case.history_past      = data.history_past
+    case.history_surgical  = data.history_surgical
+    case.history_family    = data.history_family
     case.thermal_sensation = data.thermal_sensation
-    case.appetite         = data.appetite
-    case.thirst           = data.thirst
-    case.sleep            = data.sleep
-    case.dreams           = data.dreams
-    case.menstrual        = data.menstrual
-    case.mind_symptoms    = data.mind_symptoms
-    case.particulars      = json.dumps(data.particulars or {})
-    case.rubrics          = json.dumps(
+    case.appetite          = data.appetite
+    case.thirst            = data.thirst
+    case.sleep             = data.sleep
+    case.dreams            = data.dreams
+    case.menstrual         = data.menstrual
+    case.mind_symptoms     = data.mind_symptoms
+    case.particulars       = json.dumps(data.particulars or {})
+    case.rubrics           = json.dumps(
         [r.model_dump() for r in data.rubrics] if data.rubrics else []
     )
     case.remedy     = data.remedy
@@ -243,24 +240,23 @@ def close_visit(
 
     visit = _get_visit(db, visit_id, clinic_id)
 
-    # FIX: check BOTH closed_at and visit_status
     if visit.closed_at or visit.visit_status == "COMPLETED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Visit is already closed"
         )
 
-    # Validate payment mode
     try:
         pay_mode = PaymentMode[data.payment_mode.upper()]
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid payment mode: {data.payment_mode}. "
-                   f"Valid: CASH, CARD, UPI, ONLINE"
+            detail=(
+                f"Invalid payment mode: {data.payment_mode}. "
+                f"Valid: CASH, CARD, UPI, ONLINE"
+            )
         )
 
-    # FIX: prevent double payment record
     existing_payment = db.query(Payment).filter(
         Payment.visit_id == visit_id
     ).first()
@@ -273,7 +269,6 @@ def close_visit(
         )
         db.add(payment)
     else:
-        # Update existing if fee changed
         existing_payment.amount = data.fee
         existing_payment.mode   = pay_mode
 
@@ -287,10 +282,8 @@ def close_visit(
     db.commit()
     db.refresh(visit)
 
-    # Update patient stats (total_visits, total_spent, last_visit_date)
     update_patient_stats(db, visit.patient_id, float(data.fee))
 
-    # Schedule follow-up reminders
     followups = schedule_followups(
         db           = db,
         visit_id     = visit_id,
@@ -300,7 +293,6 @@ def close_visit(
         channel      = data.followup_channel or "WHATSAPP"
     )
 
-    # Send WhatsApp thank-you (non-blocking — errors logged, not raised)
     _send_thankyou_async(visit, clinic_id, db)
 
     logger.info(
@@ -384,8 +376,8 @@ def get_visit_wizard_state(
         current_step = 4
 
     return {
-        "visit_id":    visit_id,
-        "visit_type":  visit.type.value if visit.type else None,
+        "visit_id":     visit_id,
+        "visit_type":   visit.type.value if visit.type else None,
         "visit_status": visit.visit_status,
         "current_step": current_step,
         "steps":        steps,
@@ -431,8 +423,9 @@ def _get_visit(
     clinic_id: str
 ) -> Visit:
     """Always clinic-scoped. Never fetch visit by ID alone."""
+
     visit = db.query(Visit).filter(
-        Visit.id       == visit_id,
+        Visit.id        == visit_id,
         Visit.clinic_id == clinic_id
     ).first()
 
@@ -447,7 +440,7 @@ def _get_visit(
 def _send_thankyou_async(visit: Visit, clinic_id: str, db: Session):
     """
     Fire-and-forget WhatsApp thank-you after visit close.
-    Errors are logged but never raise — visit close must succeed
+    Errors logged but never raised — visit close must always succeed
     even if WhatsApp is temporarily down.
     """
     try:
@@ -472,7 +465,10 @@ def _send_thankyou_async(visit: Visit, clinic_id: str, db: Session):
         loop.run_until_complete(
             send_thankyou_message(
                 phone        = patient.phone_mobile,
-                patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
+                patient_name = (
+                    f"{patient.first_name} "
+                    f"{patient.last_name or ''}"
+                ).strip(),
                 doctor_name  = clinic.doctor_name if clinic else "Doctor",
                 clinic_name  = clinic.name if clinic else "Clinic",
                 clinic_phone = clinic.phone if clinic else "",
@@ -482,4 +478,6 @@ def _send_thankyou_async(visit: Visit, clinic_id: str, db: Session):
         loop.close()
 
     except Exception as e:
-        logger.error(f"Thank-you WhatsApp failed for visit {visit.id}: {e}")
+        logger.error(
+            f"Thank-you WhatsApp failed for visit {visit.id}: {e}"
+        )

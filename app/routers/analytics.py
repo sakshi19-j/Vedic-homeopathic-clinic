@@ -2,16 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-
 from app.services import analytics_service
-
 from app.middleware.auth_middleware import (
-    doctor_only,
-    get_current_user,
     require_plan,
     block_receptionist_from_revenue
 )
-
 from app.models.user import User
 
 
@@ -21,310 +16,217 @@ router = APIRouter(
 )
 
 
-# ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 # FULL DASHBOARD
-# ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 
 @router.get("/dashboard")
 def get_dashboard(
     db: Session = Depends(get_db),
-
-    # Revenue restriction
-    current_user: User = Depends(
-        block_receptionist_from_revenue
-    ),
-
-    # Growth+ only
-    plan_user: User = Depends(
-        require_plan("growth")
-    )
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("growth"))
 ):
-    """
-    Full analytics dashboard.
-    Growth plan and above only.
-    """
-
     clinic_id = current_user.clinic_id
 
     return {
-
-        "daily_revenue":
-            analytics_service.daily_revenue(
-                db,
-                clinic_id
-            ),
-
-        "monthly_revenue":
-            analytics_service.monthly_revenue(
-                db,
-                clinic_id
-            ),
-
-        "missed_patients":
-            analytics_service.missed_patients(
-                db,
-                clinic_id
-            ),
-
-        "retention":
-            analytics_service.retention_rate(
-                db,
-                clinic_id
-            ),
-
-        "followups_today":
-            analytics_service.followups_due_today(
-                db,
-                clinic_id
-            ),
-
-        "top_patients":
-            analytics_service.top_patients(
-                db,
-                clinic_id,
-                limit=5
-            )
+        "revenue": {
+            "today":        analytics_service.daily_revenue(db, clinic_id),
+            "this_week":    analytics_service.weekly_revenue(db, clinic_id),
+            "this_month":   analytics_service.monthly_revenue(db, clinic_id),
+        },
+        "patients": {
+            "missed":       analytics_service.missed_patients(db, clinic_id),
+            "retention":    analytics_service.retention_rate(db, clinic_id),
+            "top":          analytics_service.top_patients(db, clinic_id, limit=5),
+        },
+        "clinical": {
+            "top_diseases":         analytics_service.top_diseases(db, clinic_id),
+            "followups_due_today":  analytics_service.followups_due_today(db, clinic_id),
+        },
+        "whatsapp":     analytics_service.whatsapp_delivery_rate(db, clinic_id),
+        "intelligence": analytics_service.revenue_lost_estimate(db, clinic_id)
     }
 
 
-# ─────────────────────────────────────────────────────
-# DAILY REVENUE
-# ─────────────────────────────────────────────────────
-
-@router.get("/revenue/daily")
-def get_daily_revenue(
-    db: Session = Depends(get_db),
-
-    # Revenue restriction
-    current_user: User = Depends(
-        block_receptionist_from_revenue
-    ),
-
-    plan_user: User = Depends(
-        require_plan("starter")
-    )
-):
-    """
-    Starter+ can access daily revenue.
-    """
-
-    return analytics_service.daily_revenue(
-        db,
-        current_user.clinic_id
-    )
-
-
-# ─────────────────────────────────────────────────────
-# MONTHLY REVENUE
-# ─────────────────────────────────────────────────────
-
-@router.get("/revenue/monthly")
-def get_monthly_revenue(
-    db: Session = Depends(get_db),
-
-    # Revenue restriction
-    current_user: User = Depends(
-        block_receptionist_from_revenue
-    ),
-
-    plan_user: User = Depends(
-        require_plan("growth")
-    )
-):
-    """
-    Growth+ only.
-    """
-
-    return analytics_service.monthly_revenue(
-        db,
-        current_user.clinic_id
-    )
-
-
-# ─────────────────────────────────────────────────────
-# MISSED PATIENTS
-# ─────────────────────────────────────────────────────
-
-@router.get("/missed-patients")
-def get_missed_patients(
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        require_plan("growth")
-    )
-):
-    """
-    Growth+ only.
-    """
-
-    return analytics_service.missed_patients(
-        db,
-        current_user.clinic_id
-    )
-
-
-# ─────────────────────────────────────────────────────
-# RETENTION
-# ─────────────────────────────────────────────────────
-
-@router.get("/retention")
-def get_retention(
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        require_plan("growth")
-    )
-):
-    """
-    Growth+ only.
-    """
-
-    return analytics_service.retention_rate(
-        db,
-        current_user.clinic_id
-    )
-
-
-# ─────────────────────────────────────────────────────
-# TOP PATIENTS
-# ─────────────────────────────────────────────────────
-
-@router.get("/top-patients")
-def get_top_patients(
-    limit: int = 10,
-
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        require_plan("growth")
-    )
-):
-    """
-    Growth+ only.
-    """
-
-    return analytics_service.top_patients(
-        db,
-        current_user.clinic_id,
-        limit
-    )
-
-
-# ─────────────────────────────────────────────────────
-# FOLLOWUPS TODAY
-# ─────────────────────────────────────────────────────
-
-@router.get("/followups/today")
-def get_followups_today(
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        require_plan("starter")
-    )
-):
-    """
-    Starter+ can access followups.
-    """
-
-    return analytics_service.followups_due_today(
-        db,
-        current_user.clinic_id
-    )
-
-
-# ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 # SUMMARY TODAY
-# Alias for Lovable frontend compatibility
-# ─────────────────────────────────────────────────────
+# Alias for Lovable frontend — /analytics/summary/today
+# ─────────────────────────────────────────────
 
 @router.get("/summary/today")
 def summary_today(
     db: Session = Depends(get_db),
-
-    # Revenue restriction
-    current_user: User = Depends(
-        block_receptionist_from_revenue
-    ),
-
-    # Starter+ can access
-    plan_user: User = Depends(
-        require_plan("starter")
-    )
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("starter"))
 ):
     """
-    Alias for dashboard —
-    frontend calls this endpoint.
-
-    Starter+ only.
+    Lightweight summary for frontend dashboard widgets.
+    Starter+ access.
     """
+    clinic_id = current_user.clinic_id
 
-    return analytics_service.get_full_dashboard(
-        db,
-        current_user.clinic_id
-    )
+    return {
+        "daily_revenue":    analytics_service.daily_revenue(db, clinic_id),
+        "missed_patients":  analytics_service.missed_patients(db, clinic_id),
+        "retention":        analytics_service.retention_rate(db, clinic_id),
+        "followups_today":  analytics_service.followups_due_today(db, clinic_id),
+        "top_patients":     analytics_service.top_patients(db, clinic_id, limit=5)
+    }
 
 
-# ─────────────────────────────────────────────────────
-# EXPORT ANALYTICS
-# ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# REVENUE — DAILY
+# ─────────────────────────────────────────────
+
+@router.get("/revenue/daily")
+def get_daily_revenue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("starter"))
+):
+    return analytics_service.daily_revenue(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# REVENUE — WEEKLY (last 7 days breakdown)
+# ─────────────────────────────────────────────
+
+@router.get("/revenue/weekly")
+def get_weekly_revenue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("growth"))
+):
+    return analytics_service.weekly_revenue(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# REVENUE — MONTHLY
+# ─────────────────────────────────────────────
+
+@router.get("/revenue/monthly")
+def get_monthly_revenue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("growth"))
+):
+    return analytics_service.monthly_revenue(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# REVENUE LOST ESTIMATE
+# ─────────────────────────────────────────────
+
+@router.get("/revenue/lost-estimate")
+def get_revenue_lost(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("growth"))
+):
+    return analytics_service.revenue_lost_estimate(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# MISSED PATIENTS
+# ─────────────────────────────────────────────
+
+@router.get("/patients/missed")
+def get_missed_patients(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("growth"))
+):
+    return analytics_service.missed_patients(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# RETENTION RATE
+# ─────────────────────────────────────────────
+
+@router.get("/patients/retention")
+def get_retention(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("growth"))
+):
+    return analytics_service.retention_rate(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# TOP PATIENTS
+# ─────────────────────────────────────────────
+
+@router.get("/patients/top")
+def get_top_patients(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("growth"))
+):
+    return analytics_service.top_patients(db, current_user.clinic_id, limit)
+
+
+# ─────────────────────────────────────────────
+# TOP DISEASES
+# ─────────────────────────────────────────────
+
+@router.get("/diseases/top")
+def get_top_diseases(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("growth"))
+):
+    return analytics_service.top_diseases(db, current_user.clinic_id, limit)
+
+
+# ─────────────────────────────────────────────
+# FOLLOWUPS DUE TODAY
+# ─────────────────────────────────────────────
+
+@router.get("/followups/today")
+def get_followups_today(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("starter"))
+):
+    return analytics_service.followups_due_today(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# WHATSAPP DELIVERY RATE
+# ─────────────────────────────────────────────
+
+@router.get("/whatsapp/delivery")
+def get_whatsapp_delivery(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_plan("growth"))
+):
+    return analytics_service.whatsapp_delivery_rate(db, current_user.clinic_id)
+
+
+# ─────────────────────────────────────────────
+# EXPORT — full data dump
+# ─────────────────────────────────────────────
 
 @router.get("/export")
 def export_analytics(
     db: Session = Depends(get_db),
-
-    # Revenue restriction
-    current_user: User = Depends(
-        block_receptionist_from_revenue
-    ),
-
-    # Growth+ only
-    plan_user: User = Depends(
-        require_plan("growth")
-    )
+    current_user: User = Depends(block_receptionist_from_revenue),
+    _: User = Depends(require_plan("growth"))
 ):
-    """
-    Export analytics data.
-
-    Growth plan and above only.
-    """
-
     clinic_id = current_user.clinic_id
 
     return {
-        "daily_revenue":
-            analytics_service.daily_revenue(
-                db,
-                clinic_id
-            ),
-
-        "monthly_revenue":
-            analytics_service.monthly_revenue(
-                db,
-                clinic_id
-            ),
-
-        "missed_patients":
-            analytics_service.missed_patients(
-                db,
-                clinic_id
-            ),
-
-        "retention":
-            analytics_service.retention_rate(
-                db,
-                clinic_id
-            ),
-
-        "followups_today":
-            analytics_service.followups_due_today(
-                db,
-                clinic_id
-            ),
-
-        "top_patients":
-            analytics_service.top_patients(
-                db,
-                clinic_id,
-                limit=100
-            )
+        "revenue": {
+            "today":        analytics_service.daily_revenue(db, clinic_id),
+            "this_week":    analytics_service.weekly_revenue(db, clinic_id),
+            "this_month":   analytics_service.monthly_revenue(db, clinic_id),
+        },
+        "patients": {
+            "missed":       analytics_service.missed_patients(db, clinic_id),
+            "retention":    analytics_service.retention_rate(db, clinic_id),
+            "top":          analytics_service.top_patients(db, clinic_id, limit=100),
+        },
+        "clinical": {
+            "top_diseases":         analytics_service.top_diseases(db, clinic_id),
+            "followups_due_today":  analytics_service.followups_due_today(db, clinic_id),
+        },
+        "whatsapp":     analytics_service.whatsapp_delivery_rate(db, clinic_id),
+        "intelligence": analytics_service.revenue_lost_estimate(db, clinic_id)
     }

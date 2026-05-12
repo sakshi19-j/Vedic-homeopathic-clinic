@@ -1,4 +1,6 @@
 import os
+
+from dotenv import load_dotenv
 from logging.config import fileConfig
 
 from sqlalchemy import (
@@ -8,6 +10,17 @@ from sqlalchemy import (
 
 from alembic import context
 
+
+# =====================================================
+# LOAD ENV VARIABLES
+# =====================================================
+
+load_dotenv()
+
+
+# =====================================================
+# ALEMBIC CONFIG
+# =====================================================
 
 config = context.config
 
@@ -26,6 +39,8 @@ db_url = os.getenv(
     "postgres://",
     "postgresql://"
 )
+
+print("ALEMBIC DATABASE URL:", db_url)
 
 
 # =====================================================
@@ -53,13 +68,9 @@ target_metadata = Base.metadata
 
 
 # =====================================================
-# EXCLUDE FILTER
-# =====================================================
-# Supabase manages auth/storage/realtime/vault schemas
-# internally. Alembic must never touch them.
+# EXCLUDED SUPABASE SCHEMAS
 # =====================================================
 
-# Schemas owned by Supabase — never migrate these
 SUPABASE_SCHEMAS = {
     "auth",
     "storage",
@@ -79,54 +90,99 @@ SUPABASE_SCHEMAS = {
     "pg_toast",
 }
 
-# Tables outside Supabase schemas that Alembic
-# should still ignore
+
+# =====================================================
+# EXCLUDED TABLES
+# =====================================================
+
 EXCLUDED_TABLES = {
     "apscheduler_jobs",
     "spatial_ref_sys",
 }
 
 
-def include_object(object, name, type_, reflected, compare_to):
+# =====================================================
+# INCLUDE FILTER
+# =====================================================
+
+def include_object(
+    object,
+    name,
+    type_,
+    reflected,
+    compare_to
+):
     """
-    Only migrate objects in the public schema
-    that belong to this application.
+    Only migrate objects in public schema
+    owned by this application.
     """
 
-    # ── Exclude entire Supabase-owned schemas ─────
-    if hasattr(object, "schema") and object.schema in SUPABASE_SCHEMAS:
+    # -------------------------------------------------
+    # EXCLUDE SUPABASE SCHEMAS
+    # -------------------------------------------------
+
+    if (
+        hasattr(object, "schema")
+        and object.schema in SUPABASE_SCHEMAS
+    ):
         return False
 
-    # ── Exclude by table name ─────────────────────
+    # -------------------------------------------------
+    # EXCLUDE TABLES
+    # -------------------------------------------------
+
     if type_ == "table":
+
         if name in EXCLUDED_TABLES:
             return False
 
-        # Exclude any reflected table that has
-        # a schema prefix we don't own
-        schema = getattr(object, "schema", None)
+        schema = getattr(
+            object,
+            "schema",
+            None
+        )
+
         if schema and schema != "public":
             return False
 
-    # ── Exclude indexes on excluded tables ────────
+    # -------------------------------------------------
+    # EXCLUDE INDEXES
+    # -------------------------------------------------
+
     if type_ == "index":
-        table = getattr(object, "table", None)
+
+        table = getattr(
+            object,
+            "table",
+            None
+        )
+
         if table is not None:
-            table_schema = getattr(table, "schema", None)
+
+            table_schema = getattr(
+                table,
+                "schema",
+                None
+            )
+
             if table_schema in SUPABASE_SCHEMAS:
                 return False
+
             if table.name in EXCLUDED_TABLES:
                 return False
 
     return True
 
 
+# =====================================================
+# INCLUDE SCHEMAS
+# =====================================================
+
 def include_schemas(name):
     """
-    Only include the public schema.
-    Keeps Alembic from even looking at
-    auth/storage/realtime.
+    Only include public schema.
     """
+
     return name in ("public", None)
 
 
@@ -138,13 +194,20 @@ def run_migrations_offline() -> None:
 
     context.configure(
         url=db_url,
+
         target_metadata=target_metadata,
+
         literal_binds=True,
+
         dialect_opts={
             "paramstyle": "named"
         },
+
         include_object=include_object,
-        include_schemas=False,         # ✅ offline — public only
+
+        include_schemas=False,
+
+        compare_type=True
     )
 
     with context.begin_transaction():
@@ -158,17 +221,29 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
 
     connectable = create_engine(
+
         db_url,
-        poolclass=pool.NullPool
+
+        poolclass=pool.NullPool,
+
+        connect_args={
+            "sslmode": "require"
+        }
     )
 
     with connectable.connect() as connection:
 
         context.configure(
+
             connection=connection,
+
             target_metadata=target_metadata,
+
             include_object=include_object,
-            include_schemas=False,     # ✅ KEY FIX — False stops Supabase schema scanning
+
+            include_schemas=False,
+
+            compare_type=True
         )
 
         with context.begin_transaction():
@@ -176,10 +251,13 @@ def run_migrations_online() -> None:
 
 
 # =====================================================
-# RUN
+# RUN ALEMBIC
 # =====================================================
 
 if context.is_offline_mode():
+
     run_migrations_offline()
+
 else:
+
     run_migrations_online()

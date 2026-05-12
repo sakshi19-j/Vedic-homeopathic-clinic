@@ -1,26 +1,20 @@
 import json
+import logging
 import tempfile
+import os
 import asyncio
 
 from sqlalchemy.orm import Session
-
 from fastapi import HTTPException
 
 from app.models.visit import Visit
-
 from app.models.patient import Patient
-
 from app.models.clinic import Clinic
-
-from app.services.pdf_service import (
-    generate_prescription_pdf
-)
-
-from app.services.whatsapp_service import (
-    send_text_message
-)
-
+from app.services.pdf_service import generate_prescription_pdf
+from app.services.whatsapp_service import send_text_message
 from app.utils.storage import upload_pdf
+
+logger = logging.getLogger(__name__)
 
 
 # =====================================================
@@ -33,387 +27,231 @@ def generate_prescription(
     clinic_id: str
 ) -> dict:
 
-    # =================================================
-    # GET VISIT
-    # =================================================
-
+    # ── Fetch all records — all clinic-scoped ─────────
     visit = db.query(Visit).filter(
-
         Visit.id == visit_id,
-
         Visit.clinic_id == clinic_id
-
     ).first()
-
     if not visit:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Visit not found"
-        )
-
-    # =================================================
-    # GET PATIENT
-    # =================================================
+        raise HTTPException(404, "Visit not found")
 
     patient = db.query(Patient).filter(
-
         Patient.id == visit.patient_id,
-
         Patient.clinic_id == clinic_id
-
     ).first()
-
     if not patient:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Patient not found"
-        )
-
-    # =================================================
-    # GET CLINIC
-    # =================================================
+        raise HTTPException(404, "Patient not found")
 
     clinic = db.query(Clinic).filter(
-
         Clinic.id == clinic_id
-
     ).first()
-
     if not clinic:
+        raise HTTPException(404, "Clinic not found")
 
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Clinic not found"
-        )
-
-    # =================================================
-    # DETECT VISIT TYPE
-    # =================================================
-
+    # ── FIX: .value on enum — not str() ───────────────
     visit_type = (
-
-        str(visit.type).upper()
-
-        if visit.type
-
-        else "HOMEOPATHY"
+        visit.type.value.upper()
+        if hasattr(visit.type, "value")
+        else str(visit.type).upper()
     )
+    if "." in visit_type:
+        visit_type = visit_type.split(".")[-1]
 
-    # =================================================
-    # BUILD RX / NOTES
-    # =================================================
-
+    # ── Build RX notes (used for homeopathy layout) ────
     rx_notes = ""
 
-    # -------------------------------------------------
-    # ALLOPATHY
-    # -------------------------------------------------
-
     if visit.allopathy_rx:
-
         rx = visit.allopathy_rx
-
         medicines = []
-
         if rx.medicines:
-
             try:
-
-                medicines = json.loads(
-                    rx.medicines
-                )
-
+                medicines = json.loads(rx.medicines)
             except Exception:
-
                 medicines = []
-
         for med in medicines:
-
             rx_notes += (
-
                 f"• {med.get('name', '')} | "
-
                 f"{med.get('dosage', '')} | "
-
                 f"{med.get('frequency', '')} | "
-
                 f"{med.get('duration', '')}\n"
             )
-
         if rx.advice:
-
-            rx_notes += (
-                f"\nAdvice: {rx.advice}\n"
-            )
-
-    # -------------------------------------------------
-    # HOMEOPATHY
-    # -------------------------------------------------
+            rx_notes += f"\nAdvice: {rx.advice}\n"
 
     elif visit.homeopathy_case:
-
         hc = visit.homeopathy_case
+        if hc.remedy:    rx_notes += f"Remedy: {hc.remedy}\n"
+        if hc.potency:   rx_notes += f"Potency: {hc.potency}\n"
+        if hc.repetition: rx_notes += f"Repetition: {hc.repetition}\n"
+        if hc.miasm:     rx_notes += f"Miasm: {hc.miasm}\n"
 
-        rx_notes += (
-            f"Remedy: {hc.remedy or ''}\n"
+    # ── Homeopathy case details for PDF layout ─────────
+    homeopathy_case = {}
+    rubrics         = []
+    if visit.homeopathy_case:
+        hc = visit.homeopathy_case
+        homeopathy_case = {
+            "remedy":     hc.remedy or "",
+            "potency":    hc.potency or "",
+            "repetition": hc.repetition or "",
+            "miasm":      hc.miasm or "",
+        }
+        if hc.rubrics:
+            try:
+                rubrics = json.loads(hc.rubrics)
+            except Exception:
+                rubrics = []
+
+    # ── Allopathy medicines for PDF layout ─────────────
+    medicines_list = []
+    advice         = ""
+    next_visit     = ""
+    diagnosis      = ""
+    if visit.allopathy_rx:
+        rx = visit.allopathy_rx
+        if rx.medicines:
+            try:
+                medicines_list = json.loads(rx.medicines)
+            except Exception:
+                medicines_list = []
+        advice     = rx.advice or ""
+        # FIX: pass next_visit_date — was previously ignored
+        next_visit = (
+            rx.next_visit_date.strftime("%d %b %Y")
+            if rx.next_visit_date else ""
         )
 
-        rx_notes += (
-            f"Potency: {hc.potency or ''}\n"
-        )
-
-        rx_notes += (
-            f"Repetition: "
-            f"{hc.repetition or ''}\n"
-        )
-
-        if hc.miasm:
-
-            rx_notes += (
-                f"Miasm: {hc.miasm}\n"
-            )
-
-    # =================================================
-    # BUILD VISIT DICT
-    # =================================================
-
+    # ── Build visit dict ───────────────────────────────
     visit_dict = {
-
-        "id":
-            visit.id,
-
-        "rx":
-            rx_notes,
-
-        "notes":
-            visit.notes,
-
-        "chief_complaint":
-            visit.chief_complaint,
-
-        "visit_type":
-            visit_type
+        "id":               visit.id,
+        "rx":               rx_notes,
+        "notes":            visit.notes or "",
+        "chief_complaint":  visit.chief_complaint or "",
+        "visit_type":       visit_type,
+        "diagnosis":        diagnosis,
+        "advice":           advice,
+        "next_visit_date":  next_visit,
+        "medicines":        medicines_list,   # for allopathy table
+        "homeopathy_case":  homeopathy_case,  # for homeopathy layout
+        "rubrics":          rubrics,          # FIX: was never passed before
     }
 
-    # =================================================
-    # BUILD CLINIC DICT
-    # =================================================
-
+    # ── Build clinic dict ──────────────────────────────
     clinic_dict = {
-
-        "name":
-            clinic.name,
-
-        "doctor_name":
-            clinic.doctor_name,
-
-        "qualification":
-            clinic.qualification,
-
-        "address":
-            clinic.address,
-
-        "phone":
-            clinic.phone,
-
-        "timings":
-            clinic.timings,
-
-        "logo_url":
-            getattr(
-                clinic,
-                "logo_url",
-                None
-            ),
-
-        "signature_url":
-            getattr(
-                clinic,
-                "signature_url",
-                None
-            ),
-
-        "reg_number":
-            getattr(
-                clinic,
-                "registration_number",
-                ""
-            )
+        "name":         clinic.name,
+        "doctor_name":  clinic.doctor_name,
+        "qualification": clinic.qualification or "",
+        "address":      clinic.address or "",
+        "phone":        clinic.phone or "",
+        "timings":      clinic.timings or "",
+        "logo_url":     getattr(clinic, "logo_url", None),
+        "signature_url": getattr(clinic, "signature_url", None),
+        "reg_number":   getattr(clinic, "registration_number", ""),
     }
 
-    # =================================================
-    # BUILD PATIENT DICT
-    # =================================================
+    # ── FIX: .value on gender enum ─────────────────────
+    gender_val = ""
+    if patient.gender:
+        gender_val = (
+            patient.gender.value
+            if hasattr(patient.gender, "value")
+            else str(patient.gender)
+        )
+        if "." in gender_val:
+            gender_val = gender_val.split(".")[-1]
 
     patient_dict = {
-
-        "name":
-            (
-                f"{patient.first_name} "
-                f"{patient.last_name or ''}"
-            ).strip(),
-
-        "age":
-            patient.age,
-
-        "gender":
-            (
-                str(patient.gender)
-                if patient.gender
-                else ""
-            ),
-
-        "reg_no":
-            (
-                patient.reg_no
-                if hasattr(patient, "reg_no")
-                else ""
-            )
+        "name":   f"{patient.first_name} {patient.last_name or ''}".strip(),
+        "age":    patient.age or "",
+        "gender": gender_val,
+        "reg_no": patient.reg_no if hasattr(patient, "reg_no") else "",
     }
-
-    # =================================================
-    # BUILD DOCTOR DICT
-    # =================================================
 
     doctor_dict = {
-
-        "name":
-            clinic.doctor_name,
-
-        "qualification":
-            clinic.qualification or "B.H.M.S."
+        "name":          clinic.doctor_name or "Doctor",
+        "qualification": clinic.qualification or "B.H.M.S.",
     }
 
-    # =================================================
-    # GENERATE PDF BYTES
-    # =================================================
-
+    # ── Generate PDF ───────────────────────────────────
     pdf_bytes = generate_prescription_pdf(
-
-        visit=visit_dict,
-
-        clinic=clinic_dict,
-
-        doctor=doctor_dict,
-
-        patient=patient_dict
+        visit=visit_dict, clinic=clinic_dict,
+        doctor=doctor_dict, patient=patient_dict
     )
 
-    # =================================================
-    # SAVE TEMP PDF
-    # =================================================
-
-    with tempfile.NamedTemporaryFile(
-
-        delete=False,
-
-        suffix=".pdf"
-
-    ) as temp_pdf:
-
-        temp_pdf.write(pdf_bytes)
-
-        pdf_path = temp_pdf.name
-
-    # =================================================
-    # UPLOAD PDF
-    # =================================================
-
-    pdf_url = upload_pdf(
-
-        pdf_path,
-
-        folder="prescriptions"
-    )
-
-    # =================================================
-    # SEND WHATSAPP MESSAGE
-    # =================================================
-
+    # ── Save to temp + upload ──────────────────────────
+    pdf_path = None
     try:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".pdf"
+        ) as tmp:
+            tmp.write(pdf_bytes)
+            pdf_path = tmp.name
 
-        if patient.phone_mobile:
+        pdf_url = upload_pdf(pdf_path, folder="prescriptions")
 
-            whatsapp_message = (
+    finally:
+        # FIX: always clean up /tmp/ file
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                os.unlink(pdf_path)
+            except Exception:
+                pass
 
-                f"Hi {patient_dict['name']}, "
+    # ── Save URL to visit record ───────────────────────
+    # FIX: URL was never saved — couldn't retrieve later
+    try:
+        if hasattr(visit, "prescription_url"):
+            visit.prescription_url = pdf_url
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Could not save prescription_url: {e}")
 
-                f"your prescription from "
+    # ── Send WhatsApp ──────────────────────────────────
+    try:
+        # FIX: check opt-out before sending
+        opted_out = getattr(patient, "whatsapp_opted_out", False)
 
-                f"{clinic_dict['doctor_name']} "
-
-                f"is ready:\n\n"
-
+        if patient.phone_mobile and not opted_out:
+            msg = (
+                f"Hi {patient_dict['name']}, your prescription from "
+                f"Dr. {clinic_dict['doctor_name']} is ready:\n\n"
                 f"{pdf_url}\n\n"
-
-                f"For queries, call "
-
-                f"{clinic_dict['phone']}"
+                f"Save this for your records. "
+                f"For queries call {clinic_dict['phone']}"
             )
 
-            # -----------------------------------------
-            # HANDLE ASYNC SAFELY
-            # -----------------------------------------
-
             try:
-
                 loop = asyncio.get_running_loop()
-
                 loop.create_task(
-
                     send_text_message(
-
-                        patient.phone_mobile,
-
-                        whatsapp_message
+                        patient.phone_mobile, msg,
+                        clinic_id=str(clinic_id),
+                        patient_id=str(patient.id),
+                        trigger="prescription_generated"
                     )
                 )
-
             except RuntimeError:
-
                 asyncio.run(
-
                     send_text_message(
-
-                        patient.phone_mobile,
-
-                        whatsapp_message
+                        patient.phone_mobile, msg,
+                        clinic_id=str(clinic_id),
+                        patient_id=str(patient.id),
+                        trigger="prescription_generated"
                     )
                 )
 
-    except Exception as whatsapp_error:
-
-        print(
-            f"❌ WhatsApp send failed: "
-            f"{whatsapp_error}"
-        )
-
-    # =================================================
-    # RESPONSE
-    # =================================================
+    except Exception as e:
+        # FIX: use logger not print
+        logger.error(f"WhatsApp prescription send failed: {e}")
 
     return {
-
-        "message":
-            "Prescription generated successfully",
-
-        "pdf_url":
-            pdf_url,
-
-        "visit_id":
-            visit_id,
-
-        "patient":
-            patient_dict["name"],
-
-        "visit_type":
-            visit_type
+        "message":    "Prescription generated successfully",
+        "pdf_url":    pdf_url,
+        "visit_id":   visit_id,
+        "patient":    patient_dict["name"],
+        "visit_type": visit_type,
+        "whatsapp_sent": (
+            bool(patient.phone_mobile)
+            and not getattr(patient, "whatsapp_opted_out", False)
+        )
     }

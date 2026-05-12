@@ -29,6 +29,39 @@ def daily_revenue(db: Session, clinic_id: str):
 
 
 # ─────────────────────────────────────────────
+# WEEKLY REVENUE (last 7 days breakdown)
+# ─────────────────────────────────────────────
+def weekly_revenue(db: Session, clinic_id: str):
+
+    today = datetime.utcnow().date()
+
+    days = []
+
+    for i in range(6, -1, -1):
+
+        day = today - timedelta(days=i)
+
+        revenue = db.query(
+            func.sum(Visit.fee)
+        ).filter(
+            Visit.clinic_id == clinic_id,
+            Visit.payment_status == PaymentStatus.PAID,
+            func.date(Visit.visit_date) == day
+        ).scalar()
+
+        days.append({
+            "date": str(day),
+            "day": day.strftime("%a"),
+            "revenue": float(revenue or 0)
+        })
+
+    return {
+        "week": days,
+        "total": sum(d["revenue"] for d in days)
+    }
+
+
+# ─────────────────────────────────────────────
 # MONTHLY REVENUE
 # ─────────────────────────────────────────────
 def monthly_revenue(db: Session, clinic_id: str):
@@ -75,13 +108,47 @@ def missed_patients(db: Session, clinic_id: str):
 
             missed.append({
                 "patient_id": patient.id,
-                "name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+                "name": (
+                    f"{patient.first_name} "
+                    f"{patient.last_name or ''}"
+                ).strip(),
                 "last_visit": str(last_visit.visit_date.date())
             })
 
     return {
         "count": len(missed),
         "patients": missed
+    }
+
+
+# ─────────────────────────────────────────────
+# REVENUE LOST — MISSED PATIENTS ESTIMATE
+# ─────────────────────────────────────────────
+def revenue_lost_estimate(db: Session, clinic_id: str):
+
+    # Average fee per visit for this clinic
+    avg_fee = db.query(
+        func.avg(Visit.fee)
+    ).filter(
+        Visit.clinic_id == clinic_id,
+        Visit.payment_status == PaymentStatus.PAID
+    ).scalar()
+
+    avg_fee = float(avg_fee or 0)
+
+    missed = missed_patients(db, clinic_id)
+
+    missed_count = missed["count"]
+
+    estimated_loss = round(
+        avg_fee * missed_count,
+        2
+    )
+
+    return {
+        "missed_patients": missed_count,
+        "avg_fee_per_visit": round(avg_fee, 2),
+        "estimated_revenue_lost": estimated_loss
     }
 
 
@@ -158,8 +225,88 @@ def top_patients(
 
         result.append({
             "patient_id": patient.id,
-            "name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+            "name": (
+                f"{patient.first_name} "
+                f"{patient.last_name or ''}"
+            ).strip(),
             "visits": visits
         })
 
     return result
+
+
+# ─────────────────────────────────────────────
+# TOP DISEASES TREATED
+# ─────────────────────────────────────────────
+def top_diseases(
+    db: Session,
+    clinic_id: str,
+    limit: int = 10
+):
+
+    rows = db.query(
+        Visit.diagnosis,
+        func.count(Visit.id).label("count")
+    ).filter(
+        Visit.clinic_id == clinic_id,
+        Visit.diagnosis.isnot(None),
+        Visit.diagnosis != ""
+    ).group_by(
+        Visit.diagnosis
+    ).order_by(
+        func.count(Visit.id).desc()
+    ).limit(limit).all()
+
+    return [
+        {
+            "disease": row.diagnosis,
+            "count": row.count
+        }
+        for row in rows
+    ]
+
+
+# ─────────────────────────────────────────────
+# WHATSAPP DELIVERY RATE
+# ─────────────────────────────────────────────
+def whatsapp_delivery_rate(
+    db: Session,
+    clinic_id: str
+):
+
+    from app.models.reminder import (
+        Reminder,
+        ReminderStatus
+    )
+
+    total = db.query(Reminder).filter(
+        Reminder.clinic_id == clinic_id
+    ).count()
+
+    sent = db.query(Reminder).filter(
+        Reminder.clinic_id == clinic_id,
+        Reminder.status == ReminderStatus.SENT
+    ).count()
+
+    failed = db.query(Reminder).filter(
+        Reminder.clinic_id == clinic_id,
+        Reminder.status == ReminderStatus.FAILED
+    ).count()
+
+    pending = db.query(Reminder).filter(
+        Reminder.clinic_id == clinic_id,
+        Reminder.status == ReminderStatus.PENDING
+    ).count()
+
+    rate = round(
+        (sent / total * 100),
+        2
+    ) if total > 0 else 0
+
+    return {
+        "total": total,
+        "sent": sent,
+        "failed": failed,
+        "pending": pending,
+        "delivery_rate_percent": rate
+    }
