@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from fastapi import HTTPException
+
 from datetime import datetime, timedelta
 
 from app.models.user import User
@@ -26,6 +27,7 @@ from app.enums import (
 
 import uuid
 import pytz
+
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -119,6 +121,9 @@ def signup_clinic(
         trial_end_date=trial_end,
 
         staff_limit=2,
+
+        # Monthly patient usage limit
+        max_patients_per_month=100,
 
         # -------------------------------------------------
         # BRANDING DEFAULTS
@@ -297,6 +302,15 @@ def login_user(
         }
 
     # -----------------------------------------------------
+    # USAGE STATS
+    # -----------------------------------------------------
+
+    usage_stats = get_usage_stats(
+        db,
+        user.clinic_id
+    )
+
+    # -----------------------------------------------------
     # JWT TOKEN
     # -----------------------------------------------------
 
@@ -331,7 +345,9 @@ def login_user(
 
         "plan": plan,
 
-        "branding": branding
+        "branding": branding,
+
+        "usage": usage_stats
     }
 
 
@@ -430,3 +446,84 @@ def create_staff_account(
     db.refresh(user)
 
     return user
+
+
+# =========================================================
+# USAGE STATS
+# =========================================================
+
+def get_usage_stats(
+    db: Session,
+    clinic_id: str
+) -> dict:
+    """
+    Patients added this month vs plan limit.
+    Called from /auth/clinic and /analytics/dashboard.
+    """
+
+    from app.models.patient import Patient
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == clinic_id
+    ).first()
+
+    if not clinic:
+        raise HTTPException(
+            status_code=404,
+            detail="Clinic not found"
+        )
+
+    # -----------------------------------------------------
+    # CURRENT MONTH START
+    # -----------------------------------------------------
+
+    now = datetime.utcnow()
+
+    month_start = now.replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    # -----------------------------------------------------
+    # PATIENT COUNT
+    # -----------------------------------------------------
+
+    patients_this_month = db.query(Patient).filter(
+        Patient.clinic_id == clinic_id,
+        Patient.created_at >= month_start
+    ).count()
+
+    # -----------------------------------------------------
+    # PLAN LIMIT
+    # -----------------------------------------------------
+
+    limit = clinic.max_patients_per_month or 100
+
+    # -----------------------------------------------------
+    # USAGE %
+    # -----------------------------------------------------
+
+    usage_percent = (
+        round((patients_this_month / limit) * 100, 1)
+        if limit > 0 else 0
+    )
+
+    return {
+        "patients_this_month": patients_this_month,
+
+        "limit": limit,
+
+        "remaining": max(
+            0,
+            limit - patients_this_month
+        ),
+
+        "usage_percent": usage_percent,
+
+        "limit_reached": (
+            patients_this_month >= limit
+        )
+    }
