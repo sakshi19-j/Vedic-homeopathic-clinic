@@ -189,6 +189,22 @@ def get_clinic(
             clinic.secondary_color,
 
         # -------------------------------------------------
+        # NEW BRANDING FIELDS
+        # -------------------------------------------------
+
+        "logo_url":
+            clinic.logo_url,
+
+        "signature_url":
+            clinic.signature_url,
+
+        "notification_settings":
+            clinic.notification_settings,
+
+        "clinic_type":
+            clinic.clinic_type,
+
+        # -------------------------------------------------
         # SUBSCRIPTION LIMITS
         # -------------------------------------------------
 
@@ -250,7 +266,19 @@ def update_clinic(
 
         "primary_color",
 
-        "secondary_color"
+        "secondary_color",
+
+        # -------------------------------------------------
+        # NEW FIELDS
+        # -------------------------------------------------
+
+        "logo_url",
+
+        "signature_url",
+
+        "notification_settings",
+
+        "clinic_type"
     ]
 
     for key, value in data.items():
@@ -260,8 +288,44 @@ def update_clinic(
 
     db.commit()
 
+    db.refresh(clinic)
+
     return {
-        "message": "Clinic updated successfully"
+
+        "message": "Clinic updated successfully",
+
+        "clinic": {
+
+            "id": clinic.id,
+
+            "name": clinic.name,
+
+            "doctor_name": clinic.doctor_name,
+
+            "qualification": clinic.qualification,
+
+            "address": clinic.address,
+
+            "city": clinic.city,
+
+            "phone": clinic.phone,
+
+            "email": clinic.email,
+
+            "timings": clinic.timings,
+
+            "primary_color": clinic.primary_color,
+
+            "secondary_color": clinic.secondary_color,
+
+            "logo_url": clinic.logo_url,
+
+            "signature_url": clinic.signature_url,
+
+            "notification_settings": clinic.notification_settings,
+
+            "clinic_type": clinic.clinic_type
+        }
     }
 
 
