@@ -247,37 +247,19 @@ def update_clinic(
         )
 
     allowed = [
-
         "name",
-
         "doctor_name",
-
         "qualification",
-
         "address",
-
         "city",
-
         "phone",
-
         "email",
-
         "timings",
-
         "primary_color",
-
         "secondary_color",
-
-        # -------------------------------------------------
-        # NEW FIELDS
-        # -------------------------------------------------
-
         "logo_url",
-
         "signature_url",
-
         "notification_settings",
-
         "clinic_type"
     ]
 
