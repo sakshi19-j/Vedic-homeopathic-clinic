@@ -63,7 +63,7 @@ def login(
     db: Session = Depends(get_db)
 ):
     """
-    Login with email OR phone + password
+    Login with email + password
     """
 
     return auth_service.login_user(
@@ -198,8 +198,13 @@ def get_clinic(
         "signature_url":
             clinic.signature_url,
 
+        # SAFE ACCESS FIX
         "notification_settings":
-            clinic.notification_settings,
+            getattr(
+                clinic,
+                "notification_settings",
+                None
+            ),
 
         "clinic_type":
             clinic.clinic_type,
@@ -304,7 +309,12 @@ def update_clinic(
 
             "signature_url": clinic.signature_url,
 
-            "notification_settings": clinic.notification_settings,
+            # SAFE ACCESS FIX
+            "notification_settings": getattr(
+                clinic,
+                "notification_settings",
+                None
+            ),
 
             "clinic_type": clinic.clinic_type
         }

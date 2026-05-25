@@ -16,21 +16,21 @@ class SignupRequest(BaseModel):
     receptionists are added later by doctor.
     """
 
-    clinic_name:   str
+    clinic_name: str
 
-    doctor_name:   str
+    doctor_name: str
 
     qualification: Optional[str] = "B.H.M.S."
 
-    email:         str
+    email: str
 
-    phone:         str
+    phone: str
 
-    password:      str
+    password: str
 
-    city:          Optional[str] = None
+    city: Optional[str] = None
 
-    timings:       Optional[str] = None
+    timings: Optional[str] = None
 
     # -------------------------------------------------
     # CLINIC TYPE
@@ -41,7 +41,7 @@ class SignupRequest(BaseModel):
     # MULTI
     # -------------------------------------------------
 
-    clinic_type:   Optional[str] = "HOMEOPATHY"
+    clinic_type: Optional[str] = "HOMEOPATHY"
 
 
 # =====================================================
@@ -50,11 +50,11 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """
-    Login using email OR phone number.
+    Login using email.
     """
 
-    # accepts email or phone
-    login:    str
+    # frontend sends this field
+    email: str
 
     password: str
 
@@ -71,15 +71,15 @@ class CreateStaffRequest(BaseModel):
     Only doctor can create staff accounts.
     """
 
-    name:     str
+    name: str
 
-    phone:    Optional[str] = None
+    phone: Optional[str] = None
 
-    email:    Optional[str] = None
+    email: Optional[str] = None
 
     password: str
 
-    role:     str = "RECEPTIONIST"
+    role: str = "RECEPTIONIST"
 
 
 # =====================================================
@@ -94,21 +94,21 @@ class LoginResponse(BaseModel):
 
     access_token: str
 
-    token_type:   str = "bearer"
+    token_type: str = "bearer"
 
-    role:         str
+    role: str
 
-    name:         str
+    name: str
 
-    clinic_id:    str
+    clinic_id: str
 
-    clinic_name:  Optional[str] = ""
+    clinic_name: Optional[str] = ""
 
-    user_id:      str
+    user_id: str
 
-    plan:         Optional[str] = "STARTER"
+    plan: Optional[str] = "STARTER"
 
-    branding:     Optional[dict] = None
+    branding: Optional[dict] = None
 
 
 # =====================================================
@@ -120,15 +120,15 @@ class UserResponse(BaseModel):
     Current logged-in user details.
     """
 
-    id:        str
+    id: str
 
-    name:      str
+    name: str
 
-    phone:     Optional[str] = None
+    phone: Optional[str] = None
 
-    email:     Optional[str] = None
+    email: Optional[str] = None
 
-    role:      str
+    role: str
 
     clinic_id: str
 
@@ -149,22 +149,22 @@ class ClinicSetupRequest(BaseModel):
     Doctor fills this from settings page.
     """
 
-    name:            Optional[str] = None
+    name: Optional[str] = None
 
-    doctor_name:     Optional[str] = None
+    doctor_name: Optional[str] = None
 
-    qualification:   Optional[str] = None
+    qualification: Optional[str] = None
 
-    address:         Optional[str] = None
+    address: Optional[str] = None
 
-    city:            Optional[str] = None
+    city: Optional[str] = None
 
-    phone:           Optional[str] = None
+    phone: Optional[str] = None
 
-    email:           Optional[str] = None
+    email: Optional[str] = None
 
-    timings:         Optional[str] = None
+    timings: Optional[str] = None
 
-    primary_color:   Optional[str] = None
+    primary_color: Optional[str] = None
 
     secondary_color: Optional[str] = None
