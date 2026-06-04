@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 
-from app.models.reminder import FollowUp, FollowUpStatus, FollowUpType, ReminderChannel
+from app.models.reminder import FollowUp, FollowUpStatus, FollowUpType, Channel as ReminderChannel
 from app.models.patient import Patient
 from app.models.clinic import Clinic
 import pytz

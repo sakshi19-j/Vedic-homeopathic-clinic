@@ -21,19 +21,21 @@ router = APIRouter(prefix="/reminders", tags=["Reminders"])
 
 @router.get("/today")
 def get_todays_reminders(
-    db:           Session      = Depends(get_db),
-    current_user: CurrentUser  = Depends(receptionist_or_doctor)
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     """
     All follow-ups due today — for reception reminders tab.
     Returns PENDING + SENT (sent today).
     """
     reminders = reminder_service.get_todays_reminders(
-        db, current_user.clinic_id
+        db,
+        current_user.clinic_id
     )
+
     return {
-        "date":      str(date.today()),
-        "total":     len(reminders),
+        "date": str(date.today()),
+        "total": len(reminders),
         "reminders": reminders
     }
 
@@ -45,8 +47,8 @@ def get_todays_reminders(
 
 @router.post("/{followup_id}/send")
 async def send_reminder(
-    followup_id:  str,
-    db:           Session     = Depends(get_db),
+    followup_id: str,
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     """
@@ -54,9 +56,9 @@ async def send_reminder(
     Uses approved Meta template: followup_reminde
     """
     return await reminder_service.send_single_reminder(
-        db          = db,
-        followup_id = followup_id,
-        clinic_id   = current_user.clinic_id
+        db=db,
+        followup_id=followup_id,
+        clinic_id=current_user.clinic_id
     )
 
 
@@ -66,15 +68,17 @@ async def send_reminder(
 
 @router.get("/due")
 def get_due_reminders(
-    target_date:  Optional[date] = Query(None),
-    db:           Session        = Depends(get_db),
-    current_user: CurrentUser    = Depends(receptionist_or_doctor)
+    target_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     return {
         "clinic_id": current_user.clinic_id,
-        "date":      str(target_date or date.today()),
+        "date": str(target_date or date.today()),
         "reminders": reminder_service.get_due_reminders(
-            db, current_user.clinic_id, target_date
+            db,
+            current_user.clinic_id,
+            target_date
         )
     }
 
@@ -85,14 +89,17 @@ def get_due_reminders(
 
 @router.post("/send-today")
 def send_todays_reminders(
-    db:           Session     = Depends(get_db),
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     """
     Manually trigger today's reminders.
     Cron job calls this automatically at 9:30 AM.
     """
-    return reminder_service.send_due_reminders(db, current_user.clinic_id)
+    return reminder_service.send_due_reminders(
+        db,
+        current_user.clinic_id
+    )
 
 
 # =====================================================
@@ -101,12 +108,14 @@ def send_todays_reminders(
 
 @router.put("/{followup_id}/mark-sent")
 def mark_sent(
-    followup_id:  str,
-    db:           Session     = Depends(get_db),
+    followup_id: str,
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     return reminder_service.mark_reminder_sent(
-        db, followup_id, current_user.clinic_id
+        db,
+        followup_id,
+        current_user.clinic_id
     )
 
 
@@ -116,12 +125,14 @@ def mark_sent(
 
 @router.put("/{followup_id}/mark-done")
 def mark_done(
-    followup_id:  str,
-    db:           Session     = Depends(get_db),
+    followup_id: str,
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     return reminder_service.mark_reminder_done(
-        db, followup_id, current_user.clinic_id
+        db,
+        followup_id,
+        current_user.clinic_id
     )
 
 
@@ -131,49 +142,60 @@ def mark_done(
 
 @router.post("/schedule")
 def schedule_followup(
-    data:         dict,
-    db:           Session     = Depends(get_db),
+    data: dict,
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
-    from app.models.reminder import FollowUp, FollowUpStatus, FollowUpType, ReminderChannel
+    from app.models.reminder import (
+        FollowUp,
+        FollowUpStatus,
+        FollowUpType,
+        Channel as ReminderChannel
+    )
 
     patient_id = data.get("patient_id")
-    due_date   = data.get("due_date")
-    ftype      = data.get("type", "CUSTOM")
+    due_date = data.get("due_date")
+    ftype = data.get("type", "CUSTOM")
 
     if not patient_id or not due_date:
-        raise HTTPException(400, "patient_id and due_date required")
+        raise HTTPException(
+            status_code=400,
+            detail="patient_id and due_date required"
+        )
 
     patient = db.query(Patient).filter(
-        Patient.id        == patient_id,
+        Patient.id == patient_id,
         Patient.clinic_id == current_user.clinic_id
     ).first()
 
     if not patient:
-        raise HTTPException(404, "Patient not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
 
     followup = FollowUp(
-        clinic_id  = current_user.clinic_id,
-        patient_id = patient_id,
-        due_date   = datetime.strptime(due_date, "%Y-%m-%d"),
-        type       = (
+        clinic_id=current_user.clinic_id,
+        patient_id=patient_id,
+        due_date=datetime.strptime(due_date, "%Y-%m-%d"),
+        type=(
             FollowUpType[ftype.upper()]
             if ftype.upper() in FollowUpType.__members__
             else FollowUpType.CUSTOM
         ),
-        status  = FollowUpStatus.PENDING,
-        channel = ReminderChannel.WHATSAPP,
-        notes   = data.get("notes", "")
+        status=FollowUpStatus.PENDING,
+        channel=ReminderChannel.WHATSAPP
     )
+
     db.add(followup)
     db.commit()
     db.refresh(followup)
 
     return {
-        "message":     "Followup scheduled",
+        "message": "Followup scheduled",
         "followup_id": str(followup.id),
-        "patient":     f"{patient.first_name} {patient.last_name or ''}".strip(),
-        "due_date":    due_date
+        "patient": f"{patient.first_name} {patient.last_name or ''}".strip(),
+        "due_date": due_date
     }
 
 
@@ -183,7 +205,7 @@ def schedule_followup(
 
 @router.get("/stats")
 def get_followup_stats(
-    db:           Session     = Depends(get_db),
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     from app.models.reminder import FollowUp, FollowUpStatus
@@ -192,22 +214,23 @@ def get_followup_stats(
     def count(status):
         return db.query(FollowUp).filter(
             FollowUp.clinic_id == current_user.clinic_id,
-            FollowUp.status    == status
+            FollowUp.status == status
         ).count()
 
     today = datetime.utcnow().date()
+
     due_today = db.query(FollowUp).filter(
         FollowUp.clinic_id == current_user.clinic_id,
-        FollowUp.status    == FollowUpStatus.PENDING,
+        FollowUp.status == FollowUpStatus.PENDING,
         func.date(FollowUp.due_date) <= today
     ).count()
 
     return {
-        "pending":   count(FollowUpStatus.PENDING),
-        "sent":      count(FollowUpStatus.SENT),
-        "done":      count(FollowUpStatus.DONE),
-        "skipped":   count(FollowUpStatus.SKIPPED),
-        "failed":    count(FollowUpStatus.FAILED),
+        "pending": count(FollowUpStatus.PENDING),
+        "sent": count(FollowUpStatus.SENT),
+        "done": count(FollowUpStatus.DONE),
+        "skipped": count(FollowUpStatus.SKIPPED),
+        "failed": count(FollowUpStatus.FAILED),
         "due_today": due_today
     }
 
@@ -218,28 +241,34 @@ def get_followup_stats(
 
 @router.get("/patient/{patient_id}")
 def get_patient_reminders(
-    patient_id:   str,
-    db:           Session     = Depends(get_db),
+    patient_id: str,
+    db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
     from app.models.reminder import FollowUp
 
     followups = db.query(FollowUp).filter(
         FollowUp.patient_id == patient_id,
-        FollowUp.clinic_id  == current_user.clinic_id
+        FollowUp.clinic_id == current_user.clinic_id
     ).order_by(FollowUp.due_date).all()
 
     return {
         "patient_id": patient_id,
-        "total":      len(followups),
+        "total": len(followups),
         "reminders": [
             {
-                "id":       str(f.id),
-                "type":     f.type.value if f.type else None,
-                "due_date": f.due_date.strftime("%d-%m-%Y") if f.due_date else None,
-                "status":   f.status.value if f.status else None,
-                "channel":  f.channel.value if f.channel else None,
-                "sent_at":  f.sent_at.strftime("%d-%m-%Y %H:%M") if f.sent_at else None,
+                "id": str(f.id),
+                "type": f.type.value if f.type else None,
+                "due_date": (
+                    f.due_date.strftime("%d-%m-%Y")
+                    if f.due_date else None
+                ),
+                "status": f.status.value if f.status else None,
+                "channel": f.channel.value if f.channel else None,
+                "sent_at": (
+                    f.sent_at.strftime("%d-%m-%Y %H:%M")
+                    if f.sent_at else None
+                ),
             }
             for f in followups
         ]
