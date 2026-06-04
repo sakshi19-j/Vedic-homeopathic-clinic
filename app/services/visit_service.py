@@ -1,24 +1,32 @@
 import json
 import logging
 from datetime import datetime
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 
-from app.models.visit import (
-    Visit, VisitType, PaymentStatus, PaymentMode,
-    AllopathyRx, HomeopathyCase, Vitals
-)
-from app.models.billing import Payment
-from app.schemas.visit import (
-    VisitCreate, VitalsInput, AllopathyInput,
-    HomeopathyInput, CloseVisitInput
-)
-from app.services.growth_service import (
-    schedule_followups, update_patient_stats
-)
 import pytz
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.models.billing import Payment
+from app.models.visit import (
+    AllopathyRx,
+    HomeopathyCase,
+    PaymentMode,
+    PaymentStatus,
+    Visit,
+    VisitType,
+    Vitals,
+)
+from app.schemas.visit import (
+    AllopathyInput,
+    CloseVisitInput,
+    HomeopathyInput,
+    VisitCreate,
+    VitalsInput,
+)
+from app.services.growth_service import update_patient_stats
 
 logger = logging.getLogger(__name__)
+
 IST = pytz.timezone("Asia/Kolkata")
 
 
@@ -28,22 +36,37 @@ IST = pytz.timezone("Asia/Kolkata")
 
 CLINIC_FIELDS = {
     "HOMEOPATHY": [
-        "chief_complaint", "miasm", "constitution",
-        "mental_generals", "physical_generals",
-        "modalities", "remedy", "potency", "dose"
+        "chief_complaint",
+        "miasm",
+        "constitution",
+        "mental_generals",
+        "physical_generals",
+        "modalities",
+        "remedy",
+        "potency",
+        "dose",
     ],
     "ALLOPATHY": [
-        "chief_complaint", "history", "examination",
-        "diagnosis", "icd_code", "rx", "advice", "follow_up_days"
+        "chief_complaint",
+        "history",
+        "examination",
+        "diagnosis",
+        "icd_code",
+        "rx",
+        "advice",
+        "follow_up_days",
     ],
     "AYURVEDIC": [
-        "chief_complaint", "prakriti", "dosha",
-        "nadi", "remedy", "anupaan", "pathya_apathya"
+        "chief_complaint",
+        "prakriti",
+        "dosha",
+        "nadi",
+        "remedy",
+        "anupaan",
+        "pathya_apathya",
     ],
 }
 
-# Safe type map — built dynamically from actual enum values
-# so adding a new VisitType never needs a change here
 VISIT_TYPE_MAP = {
     v.value: v for v in VisitType
 }
@@ -210,8 +233,10 @@ def save_homeopathy_case(
     case.mind_symptoms     = data.mind_symptoms
     case.particulars       = json.dumps(data.particulars or {})
     case.rubrics           = json.dumps(
-        [r.model_dump() for r in data.rubrics] if data.rubrics else []
+        [r.model_dump() for r in data.rubrics]
+        if data.rubrics else []
     )
+
     case.remedy     = data.remedy
     case.potency    = data.potency
     case.repetition = data.repetition
@@ -262,18 +287,27 @@ def close_visit(
     ).first()
 
     if not existing_payment:
+
         payment = Payment(
             visit_id = visit_id,
             amount   = data.fee,
             mode     = pay_mode
         )
+
         db.add(payment)
+
     else:
+
         existing_payment.amount = data.fee
         existing_payment.mode   = pay_mode
 
     visit.fee            = data.fee
-    visit.disease_type   = data.disease_type or visit.disease_type or "default"
+    visit.disease_type   = (
+        data.disease_type
+        or visit.disease_type
+        or "default"
+    )
+
     visit.payment_status = PaymentStatus.PAID
     visit.payment_mode   = pay_mode
     visit.closed_at      = datetime.now(IST)
@@ -282,136 +316,171 @@ def close_visit(
     db.commit()
     db.refresh(visit)
 
-    update_patient_stats(db, visit.patient_id, float(data.fee))
+    # =====================================================
+    # UPDATE PATIENT STATS
+    # =====================================================
 
-    followups = schedule_followups(
-        db           = db,
-        visit_id     = visit_id,
-        patient_id   = visit.patient_id,
-        clinic_id    = clinic_id,
-        disease_type = visit.disease_type,
-        channel      = data.followup_channel or "WHATSAPP"
+    update_patient_stats(
+        db,
+        visit.patient_id,
+        float(data.fee)
     )
 
-    _send_thankyou_async(visit, clinic_id, db)
+    # =====================================================
+    # AUTO-SCHEDULE FOLLOWUPS
+    # =====================================================
+
+    followups = []
+
+    try:
+
+        from app.services.reminder_service import (
+            schedule_followups_after_visit
+        )
+
+        followups = schedule_followups_after_visit(
+            db         = db,
+            visit_id   = visit.id,
+            patient_id = str(visit.patient_id),
+            clinic_id  = str(clinic_id)
+        )
+
+    except Exception as e:
+
+        logger.error(
+            f"Follow-up scheduling failed for "
+            f"visit {visit.id}: {e}"
+        )
+
+    # =====================================================
+    # SEND THANK-YOU WHATSAPP
+    # =====================================================
+
+    try:
+
+        import asyncio
+
+        from app.services.whatsapp_service import (
+            send_template_message
+        )
+
+        from app.models.patient import (
+            Patient as PatientModel
+        )
+
+        from app.models.clinic import (
+            Clinic as ClinicModel
+        )
+
+        patient = db.query(PatientModel).filter(
+            PatientModel.id == visit.patient_id
+        ).first()
+
+        clinic = db.query(ClinicModel).filter(
+            ClinicModel.id == clinic_id
+        ).first()
+
+        if (
+            patient
+            and patient.phone_mobile
+            and not getattr(
+                patient,
+                "whatsapp_opted_out",
+                False
+            )
+        ):
+
+            async def _send():
+
+                return await send_template_message(
+                    phone         = patient.phone_mobile,
+                    template_name = "visit_thankyou",
+                    language      = "en",
+
+                    components = [
+                        {
+                            "type": "body",
+
+                            "parameters": [
+                                {
+                                    "type": "text",
+                                    "text": patient.first_name
+                                },
+
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        clinic.phone
+                                        if clinic and clinic.phone
+                                        else "9765402949"
+                                    )
+                                },
+                            ]
+                        }
+                    ],
+
+                    db         = db,
+                    clinic_id  = str(clinic_id),
+                    patient_id = str(patient.id),
+                    trigger    = "visit_close"
+                )
+
+            try:
+
+                loop = asyncio.get_event_loop()
+
+                if loop.is_running():
+
+                    asyncio.create_task(_send())
+
+                else:
+
+                    loop.run_until_complete(_send())
+
+            except RuntimeError:
+
+                new_loop = asyncio.new_event_loop()
+
+                new_loop.run_until_complete(_send())
+
+                new_loop.close()
+
+    except Exception as e:
+
+        logger.error(
+            f"Thank-you WhatsApp failed for "
+            f"visit {visit.id}: {e}"
+        )
+
+    # =====================================================
+    # FINAL LOG
+    # =====================================================
 
     logger.info(
         f"Visit closed: {visit_id} | "
-        f"Fee: {data.fee} | Followups: {len(followups)}"
+        f"Fee: {data.fee} | "
+        f"Followups: {len(followups)}"
     )
 
     return {
-        "status":              "closed",
-        "visit_id":            visit_id,
-        "amount_paid":         float(data.fee),
-        "payment_mode":        data.payment_mode.upper(),
+
+        "status": "closed",
+
+        "visit_id": visit_id,
+
+        "amount_paid": float(data.fee),
+
+        "payment_mode": data.payment_mode.upper(),
+
         "followups_scheduled": followups,
-        "followups_count":     len(followups),
+
+        "followups_count": len(followups),
+
         "message": (
             f"Visit closed. "
             f"{len(followups)} follow-up reminders scheduled."
         )
     }
-
-
-# =====================================================
-# UPDATE VISIT STATUS
-# =====================================================
-
-def update_visit_status(
-    db: Session,
-    visit_id: str,
-    clinic_id: str,
-    new_status: str
-) -> dict:
-
-    VALID_STATUSES = {"DRAFT", "IN_PROGRESS", "COMPLETED", "CANCELLED"}
-
-    if new_status.upper() not in VALID_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status. Valid: {VALID_STATUSES}"
-        )
-
-    visit = _get_visit(db, visit_id, clinic_id)
-    visit.visit_status = new_status.upper()
-    db.commit()
-
-    return {
-        "visit_id": visit_id,
-        "status":   new_status.upper(),
-        "message":  f"Visit moved to {new_status.upper()}"
-    }
-
-
-# =====================================================
-# GET VISIT WIZARD STATE
-# =====================================================
-
-def get_visit_wizard_state(
-    db: Session,
-    visit_id: str,
-    clinic_id: str
-) -> dict:
-
-    visit = _get_visit(db, visit_id, clinic_id)
-
-    steps = {
-        "step_1_vitals":       visit.vitals is not None,
-        "step_2_consultation": (
-            visit.homeopathy_case is not None
-            or visit.allopathy_rx is not None
-        ),
-        "step_3_billing":      visit.payment_status == PaymentStatus.PAID,
-        "step_4_complete":     visit.closed_at is not None
-    }
-
-    if not steps["step_1_vitals"]:
-        current_step = 1
-    elif not steps["step_2_consultation"]:
-        current_step = 2
-    elif not steps["step_3_billing"]:
-        current_step = 3
-    else:
-        current_step = 4
-
-    return {
-        "visit_id":     visit_id,
-        "visit_type":   visit.type.value if visit.type else None,
-        "visit_status": visit.visit_status,
-        "current_step": current_step,
-        "steps":        steps,
-        "patient_id":   visit.patient_id
-    }
-
-
-# =====================================================
-# GET VISIT
-# =====================================================
-
-def get_visit(
-    db: Session,
-    visit_id: str,
-    clinic_id: str
-) -> dict:
-
-    visit = _get_visit(db, visit_id, clinic_id)
-
-    return {
-        "id":             visit.id,
-        "patient_id":     visit.patient_id,
-        "type":           visit.type.value if visit.type else None,
-        "visit_status":   visit.visit_status,
-        "chief_complaint": visit.chief_complaint,
-        "disease_type":   visit.disease_type,
-        "fee":            float(visit.fee or 0),
-        "payment_status": visit.payment_status.value if visit.payment_status else None,
-        "payment_mode":   visit.payment_mode.value if visit.payment_mode else None,
-        "visit_date":     visit.visit_date.strftime("%d-%m-%Y %H:%M") if visit.visit_date else None,
-        "closed_at":      visit.closed_at.strftime("%d-%m-%Y %H:%M") if visit.closed_at else None,
-        "notes":          visit.notes
-    }
-
 
 # =====================================================
 # PRIVATE HELPERS
@@ -422,7 +491,6 @@ def _get_visit(
     visit_id: str,
     clinic_id: str
 ) -> Visit:
-    """Always clinic-scoped. Never fetch visit by ID alone."""
 
     visit = db.query(Visit).filter(
         Visit.id        == visit_id,
@@ -434,50 +502,5 @@ def _get_visit(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Visit not found"
         )
+
     return visit
-
-
-def _send_thankyou_async(visit: Visit, clinic_id: str, db: Session):
-    """
-    Fire-and-forget WhatsApp thank-you after visit close.
-    Errors logged but never raised — visit close must always succeed
-    even if WhatsApp is temporarily down.
-    """
-    try:
-        import asyncio
-        from app.models.patient import Patient
-        from app.models.clinic import Clinic
-        from app.services.whatsapp import send_thankyou_message
-
-        patient = db.query(Patient).filter(
-            Patient.id == visit.patient_id
-        ).first()
-        clinic = db.query(Clinic).filter(
-            Clinic.id == clinic_id
-        ).first()
-
-        if not patient or not patient.phone_mobile:
-            return
-        if getattr(patient, "whatsapp_opted_out", False):
-            return
-
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            send_thankyou_message(
-                phone        = patient.phone_mobile,
-                patient_name = (
-                    f"{patient.first_name} "
-                    f"{patient.last_name or ''}"
-                ).strip(),
-                doctor_name  = clinic.doctor_name if clinic else "Doctor",
-                clinic_name  = clinic.name if clinic else "Clinic",
-                clinic_phone = clinic.phone if clinic else "",
-                language     = patient.language_pref or "en"
-            )
-        )
-        loop.close()
-
-    except Exception as e:
-        logger.error(
-            f"Thank-you WhatsApp failed for visit {visit.id}: {e}"
-        )
