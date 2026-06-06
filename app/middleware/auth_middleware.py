@@ -82,14 +82,31 @@ class CurrentUser:
 
 def decode_supabase_token(token: str) -> dict | None:
     try:
-        payload = jwt.decode(
-            token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            options={"verify_aud": False}
-        )
+        # Get the public key from Supabase JWKS endpoint
+        import httpx
+        jwks_url = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+        response = httpx.get(jwks_url, timeout=10)
+        jwks = response.json()
+        
+        from jose import jwk
+        keys = jwks.get("keys", [])
+        
+        payload = None
+        for key_data in keys:
+            try:
+                public_key = jwk.construct(key_data)
+                payload = jwt.decode(
+                    token,
+                    public_key,
+                    algorithms=["ES256", "RS256", "HS256"],
+                    options={"verify_aud": False}
+                )
+                break
+            except Exception:
+                continue
+                
         return payload
-    except JWTError as e:
+    except Exception as e:
         logger.warning(f"JWT decode failed: {e}")
         return None
 
