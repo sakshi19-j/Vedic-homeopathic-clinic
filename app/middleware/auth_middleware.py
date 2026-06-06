@@ -85,8 +85,8 @@ def decode_supabase_token(token: str) -> dict | None:
         payload = jwt.decode(
             token,
             settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256", "RS256"],
-            audience="authenticated"
+            algorithms=["HS256"],
+            options={"verify_aud": False}
         )
         return payload
     except JWTError as e:
