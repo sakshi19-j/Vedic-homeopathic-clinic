@@ -31,7 +31,7 @@ router = APIRouter(
 # CREATE PATIENT
 # =====================================================
 
-@router.post("/", response_model=PatientResponse)
+@router.post("", response_model=PatientResponse)
 def create_patient(
     request: Request,
 
@@ -93,7 +93,7 @@ def create_patient(
 # LIST PATIENTS
 # =====================================================
 
-@router.get("/")
+@router.get("")
 def list_patients(
     search: Optional[str] = Query(
         None,

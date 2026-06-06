@@ -1,13 +1,23 @@
-import os
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from fastapi.middleware.cors import (
     CORSMiddleware
 )
 
-from app.config import settings
+from fastapi.exceptions import (
+    RequestValidationError
+)
+
+from fastapi.responses import (
+    JSONResponse
+)
+
+from app.config import (
+    settings,
+    configure_logging
+)
 
 from app.database import create_tables
 
@@ -74,6 +84,8 @@ app = FastAPI(
 
     title="Vennova Clinic Growth Engine API",
 
+    redirect_slashes=False,
+
     description=(
         "AI-powered clinic growth "
         "operating system for modern clinics"
@@ -88,15 +100,48 @@ app = FastAPI(
 
 
 # =========================================================
+# VALIDATION ERROR HANDLER
+# =========================================================
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError
+):
+    """
+    Logs full 422 validation errors to Railway logs.
+    """
+
+    logger.error(
+        f"422 on {request.url}: {exc.errors()}"
+    )
+
+    return JSONResponse(
+
+        status_code=422,
+
+        content={
+            "detail": exc.errors()
+        }
+    )
+
+
+# =========================================================
 # SECURE CORS CONFIGURATION
 # =========================================================
 
-allowed_origins = os.getenv(
+allowed_origins = [
 
-    "ALLOWED_ORIGINS",
+    o.strip()
+
+    for o in settings.ALLOWED_ORIGINS.split(",")
+
+    if o.strip()
+
+] or [
 
     "https://app.vennova.in"
-).split(",")
+]
 
 app.add_middleware(
 
@@ -116,14 +161,20 @@ app.add_middleware(
 
         "DELETE",
 
-        "PATCH"
+        "PATCH",
+
+        "OPTIONS"
     ],
 
     allow_headers=[
 
         "Authorization",
 
-        "Content-Type"
+        "Content-Type",
+
+        "Accept",
+
+        "Origin"
     ],
 )
 
@@ -262,65 +313,47 @@ app.include_router(
 # =========================================================
 
 @app.on_event("startup")
-async def startup():
-    """
-    Runs when FastAPI server starts.
+def startup():
 
-    Production-safe startup:
-    - doesn't crash on DB init errors
-    - handles Railway cold starts better
-    - safely starts APScheduler
-    """
+    # -----------------------------------------------------
+    # CONFIGURE LOGGING
+    # -----------------------------------------------------
 
-    # -------------------------------------------------
+    configure_logging()
+
+    # -----------------------------------------------------
     # CREATE DATABASE TABLES
-    # -------------------------------------------------
+    # -----------------------------------------------------
 
-    try:
+    create_tables()
 
-        create_tables()
-
-        print(
-            "✅ Database tables initialized"
-        )
-
-    except Exception as e:
-
-        logger.error(
-            f"❌ DB init error: {e}"
-        )
-
-    # -------------------------------------------------
+    # -----------------------------------------------------
     # START APSCHEDULER
-    # -------------------------------------------------
+    # -----------------------------------------------------
 
-    try:
+    start_scheduler()
 
-        start_scheduler()
+    # -----------------------------------------------------
+    # STARTUP LOGS
+    # -----------------------------------------------------
 
-        print(
-            "✅ APScheduler started"
-        )
-
-    except Exception as e:
-
-        logger.error(
-            f"❌ Scheduler startup error: {e}"
-        )
-
-    # -------------------------------------------------
-    # FINAL STARTUP LOGS
-    # -------------------------------------------------
-
-    print(
+    logger.info(
         "✅ Vennova v2.0 — All systems running"
     )
 
-    print(
+    logger.info(
+        "✅ Database tables initialized"
+    )
+
+    logger.info(
+        "✅ APScheduler started — 5 jobs registered"
+    )
+
+    logger.info(
         "✅ Supabase connected"
     )
 
-    print(
+    logger.info(
         "✅ WhatsApp services active"
     )
 
