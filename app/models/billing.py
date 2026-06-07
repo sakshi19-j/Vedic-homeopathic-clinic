@@ -35,7 +35,8 @@ class Payment(BaseModel):
         default=0
     )
 
-    payment_method = Column(
+    # ✅ KEEP payment_mode because DB column already exists
+    payment_mode = Column(
         String,
         nullable=True
     )
@@ -55,7 +56,6 @@ class Payment(BaseModel):
         server_default=func.now()
     )
 
-    # RELATIONSHIP
     visit = relationship(
         "Visit",
         back_populates="payments"

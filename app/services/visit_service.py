@@ -397,7 +397,7 @@ def close_visit(
         visit_id=visit.id,
         clinic_id=visit.clinic_id,
         amount=data.fee,
-        payment_method=data.payment_mode
+        payment_mode=data.payment_mode
     )
 
     db.add(payment)
