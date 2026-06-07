@@ -230,3 +230,18 @@ def export_analytics(
         "whatsapp":     analytics_service.whatsapp_delivery_rate(db, clinic_id),
         "intelligence": analytics_service.revenue_lost_estimate(db, clinic_id)
     }
+
+# ─────────────────────────────────────────────
+# REVENUE — combined endpoint for frontend
+# ─────────────────────────────────────────────
+@router.get("/revenue")
+def get_revenue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(block_receptionist_from_revenue)
+):
+    clinic_id = current_user.clinic_id
+    return {
+        "today":   analytics_service.daily_revenue(db, clinic_id),
+        "weekly":  analytics_service.weekly_revenue(db, clinic_id),
+        "monthly": analytics_service.monthly_revenue(db, clinic_id),
+    }
