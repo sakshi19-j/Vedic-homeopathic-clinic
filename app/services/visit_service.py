@@ -395,12 +395,12 @@ def close_visit(
 
     payment = Payment(
         visit_id=visit.id,
-        amount=data.fee,
-        payment_mode=data.payment_mode,
-        payment_status="PAID"
+        amount=data.fee
     )
 
     db.add(payment)
+
+    db.flush()
 
     visit.fee = data.fee
 
