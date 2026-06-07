@@ -184,17 +184,22 @@ def get_visit_wizard_state(
         )
     }
 
+
+# =====================================================
+# CLOSE VISIT
+# =====================================================
+
 def close_visit(
     db: Session,
     clinic_id: str,
     visit_id: str,
-    data: CloseVisitInput
+    data: CloseVisitRequest
 ):
 
     visit = _get_visit(
-        db,
-        clinic_id,
-        visit_id
+        db=db,
+        visit_id=visit_id,
+        clinic_id=clinic_id
     )
 
     # =====================================================
@@ -216,25 +221,25 @@ def close_visit(
     ).first()
 
     # =====================================================
-    # CREATE PAYMENT IF NOT EXISTS
+    # CREATE PAYMENT
     # =====================================================
 
     if not payment:
 
         payment = Payment(
             visit_id=visit.id,
-            clinic_id=visit.clinic_id,   # ✅ FIXED
-            amount=data.fee,
-            payment_mode=data.payment_mode
+            clinic_id=visit.clinic_id,
+            amount=data.fee
         )
 
         db.add(payment)
 
-    else:
+    # =====================================================
+    # UPDATE PAYMENT
+    # =====================================================
 
-        payment.clinic_id = visit.clinic_id
-        payment.amount = data.fee
-        payment.payment_mode = data.payment_mode
+    payment.clinic_id = visit.clinic_id
+    payment.amount = data.fee
 
     # =====================================================
     # SAVE
