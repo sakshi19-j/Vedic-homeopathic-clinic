@@ -18,26 +18,28 @@ class Payment(BaseModel):
         String,
         ForeignKey("visits.id"),
         nullable=False,
+        unique=True
+    )
+
+    clinic_id = Column(
+        String,
+        nullable=False,
         index=True
     )
 
     amount = Column(
         Numeric(10, 2),
-        nullable=False,
         default=0
     )
 
-    # ONLY keep columns that REALLY exist in DB
-
-    reference_no = Column(
+    payment_mode = Column(
         String,
         nullable=True
     )
 
-    notes = Column(
-        String,
-        nullable=True
-    )
+    # =====================================================
+    # RELATIONSHIP
+    # =====================================================
 
     visit = relationship(
         "Visit",
