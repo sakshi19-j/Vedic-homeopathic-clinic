@@ -339,6 +339,31 @@ def save_homeopathy_case(
 
 
 # =====================================================
+# PRIVATE HELPERS
+# =====================================================
+
+def _get_visit(
+    db: Session,
+    visit_id: str,
+    clinic_id: str
+) -> Visit:
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == clinic_id
+    ).first()
+
+    if not visit:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Visit not found"
+        )
+
+    return visit
+
+
+# =====================================================
 # CLOSE VISIT
 # =====================================================
 
