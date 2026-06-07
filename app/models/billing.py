@@ -43,5 +43,5 @@ class Payment(BaseModel):
 
     visit = relationship(
         "Visit",
-        back_populates="payment"
+        back_populates="payments"
     )

@@ -13,6 +13,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
 from datetime import datetime
+
 import enum
 
 
@@ -81,7 +82,6 @@ class Visit(BaseModel):
         nullable=False
     )
 
-    # Groups related visits together
     episode_id = Column(
         String,
         nullable=True
@@ -97,7 +97,7 @@ class Visit(BaseModel):
     )
 
     # -------------------------------------------------
-    # VISIT STATUS
+    # STATUS
     # -------------------------------------------------
 
     visit_status = Column(
@@ -106,10 +106,6 @@ class Visit(BaseModel):
         nullable=False,
         index=True
     )
-
-    # -------------------------------------------------
-    # VISIT DETAILS
-    # -------------------------------------------------
 
     disease_type = Column(
         String,
@@ -156,15 +152,14 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    # Prescription PDF URL
     prescription_url = Column(
         String,
         nullable=True
     )
 
-    # -------------------------------------------------
+    # =====================================================
     # RELATIONSHIPS
-    # -------------------------------------------------
+    # =====================================================
 
     patient = relationship(
         "Patient",
@@ -198,7 +193,7 @@ class Visit(BaseModel):
     payments = relationship(
         "Payment",
         back_populates="visit",
-        cascade="all, delete-orphan"
+        uselist=False
     )
 
     follow_ups = relationship(
@@ -208,7 +203,7 @@ class Visit(BaseModel):
 
 
 # =====================================================
-# ALLOPATHY PRESCRIPTION
+# ALLOPATHY RX
 # =====================================================
 
 class AllopathyRx(BaseModel):
@@ -256,95 +251,27 @@ class HomeopathyCase(BaseModel):
         unique=True
     )
 
-    chief_complaint = Column(
-        String,
-        nullable=True
-    )
+    chief_complaint = Column(String, nullable=True)
+    history_present = Column(String, nullable=True)
+    history_past = Column(String, nullable=True)
+    history_surgical = Column(String, nullable=True)
+    history_family = Column(String, nullable=True)
 
-    history_present = Column(
-        String,
-        nullable=True
-    )
+    thermal_sensation = Column(String, nullable=True)
+    appetite = Column(String, nullable=True)
+    thirst = Column(String, nullable=True)
+    sleep = Column(String, nullable=True)
+    dreams = Column(String, nullable=True)
+    menstrual = Column(String, nullable=True)
+    mind_symptoms = Column(String, nullable=True)
 
-    history_past = Column(
-        String,
-        nullable=True
-    )
+    particulars = Column(String, nullable=True)
+    rubrics = Column(String, nullable=True)
 
-    history_surgical = Column(
-        String,
-        nullable=True
-    )
-
-    history_family = Column(
-        String,
-        nullable=True
-    )
-
-    thermal_sensation = Column(
-        String,
-        nullable=True
-    )
-
-    appetite = Column(
-        String,
-        nullable=True
-    )
-
-    thirst = Column(
-        String,
-        nullable=True
-    )
-
-    sleep = Column(
-        String,
-        nullable=True
-    )
-
-    dreams = Column(
-        String,
-        nullable=True
-    )
-
-    menstrual = Column(
-        String,
-        nullable=True
-    )
-
-    mind_symptoms = Column(
-        String,
-        nullable=True
-    )
-
-    particulars = Column(
-        String,
-        nullable=True
-    )
-
-    rubrics = Column(
-        String,
-        nullable=True
-    )
-
-    remedy = Column(
-        String,
-        nullable=True
-    )
-
-    potency = Column(
-        String,
-        nullable=True
-    )
-
-    repetition = Column(
-        String,
-        nullable=True
-    )
-
-    miasm = Column(
-        String,
-        nullable=True
-    )
+    remedy = Column(String, nullable=True)
+    potency = Column(String, nullable=True)
+    repetition = Column(String, nullable=True)
+    miasm = Column(String, nullable=True)
 
     visit = relationship(
         "Visit",
