@@ -97,7 +97,7 @@ class Visit(BaseModel):
     )
 
     # -------------------------------------------------
-    # STATUS
+    # VISIT STATUS
     # -------------------------------------------------
 
     visit_status = Column(
@@ -106,6 +106,10 @@ class Visit(BaseModel):
         nullable=False,
         index=True
     )
+
+    # -------------------------------------------------
+    # VISIT DETAILS
+    # -------------------------------------------------
 
     disease_type = Column(
         String,
@@ -189,7 +193,7 @@ class Visit(BaseModel):
         uselist=False
     )
 
-    # ✅ FIXED HERE
+    # ✅ FIXED PAYMENT RELATION
     payments = relationship(
         "Payment",
         back_populates="visit",
