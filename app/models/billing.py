@@ -1,13 +1,11 @@
 from sqlalchemy import (
     Column,
     String,
-    DateTime,
     Numeric,
     ForeignKey
 )
 
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.models.base import BaseModel
 
@@ -23,23 +21,13 @@ class Payment(BaseModel):
         index=True
     )
 
-    clinic_id = Column(
-        String,
-        nullable=False,
-        index=True
-    )
-
     amount = Column(
         Numeric(10, 2),
         nullable=False,
         default=0
     )
 
-    # ✅ KEEP payment_mode because DB column already exists
-    payment_mode = Column(
-        String,
-        nullable=True
-    )
+    # ONLY keep columns that REALLY exist in DB
 
     reference_no = Column(
         String,
@@ -51,12 +39,7 @@ class Payment(BaseModel):
         nullable=True
     )
 
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now()
-    )
-
     visit = relationship(
         "Visit",
-        back_populates="payments"
+        back_populates="payment"
     )
