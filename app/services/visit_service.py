@@ -165,12 +165,12 @@ def save_vitals(
 
         db.add(vitals)
 
-    vitals.weight_kg    = data.weight_kg
-    vitals.height_cm    = data.height_cm
-    vitals.bp_systolic  = data.bp_systolic
+    vitals.weight_kg = data.weight_kg
+    vitals.height_cm = data.height_cm
+    vitals.bp_systolic = data.bp_systolic
     vitals.bp_diastolic = data.bp_diastolic
-    vitals.temperature  = data.temperature
-    vitals.pulse_rate   = data.pulse_rate
+    vitals.temperature = data.temperature
+    vitals.pulse_rate = data.pulse_rate
 
     db.commit()
 
@@ -389,54 +389,18 @@ def close_visit(
             detail="Visit is already closed"
         )
 
-    try:
+    # =====================================================
+    # CREATE PAYMENT RECORD
+    # =====================================================
 
-        pay_mode = PaymentMode[
-            data.payment_mode.upper()
-        ]
+    payment = Payment(
+        visit_id=visit.id,
+        amount=data.fee,
+        payment_mode=data.payment_mode,
+        payment_status="PAID"
+    )
 
-    except KeyError:
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Invalid payment mode: "
-                f"{data.payment_mode}. "
-                f"Valid: CASH, CARD, "
-                f"UPI, ONLINE"
-            )
-        )
-
-    existing_payment = db.query(
-        Payment
-    ).filter(
-        Payment.visit_id == visit_id
-    ).first()
-
-    if not existing_payment:
-
-        payment = Payment(
-            visit_id = visit_id,
-            clinic_id = visit.clinic_id,
-            amount = data.fee,
-            mode = pay_mode
-        )
-
-        db.add(payment)
-
-    else:
-
-        existing_payment.clinic_id = (
-            visit.clinic_id
-        )
-
-        existing_payment.amount = (
-            data.fee
-        )
-
-        existing_payment.mode = (
-            pay_mode
-        )
+    db.add(payment)
 
     visit.fee = data.fee
 
@@ -450,7 +414,21 @@ def close_visit(
         PaymentStatus.PAID
     )
 
-    visit.payment_mode = pay_mode
+    try:
+
+        visit.payment_mode = PaymentMode[
+            data.payment_mode.upper()
+        ]
+
+    except KeyError:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid payment mode: "
+                f"{data.payment_mode}"
+            )
+        )
 
     visit.closed_at = (
         datetime.now(IST)
@@ -480,12 +458,12 @@ def close_visit(
 
         followups = (
             schedule_followups_after_visit(
-                db = db,
-                visit_id = visit.id,
-                patient_id = str(
+                db=db,
+                visit_id=visit.id,
+                patient_id=str(
                     visit.patient_id
                 ),
-                clinic_id = str(
+                clinic_id=str(
                     clinic_id
                 )
             )
