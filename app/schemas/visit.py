@@ -3,13 +3,36 @@ from typing import Optional, List, Dict, Any
 
 
 # =====================================================
+# VISIT CREATE
+# =====================================================
+
+class VisitCreate(BaseModel):
+
+    patient_id: str
+
+    doctor_id: str
+
+    type: str
+
+    chief_complaint: Optional[str] = None
+
+    disease_type: Optional[str] = None
+
+    notes: Optional[str] = None
+
+    fee: Optional[float] = 0
+
+
+# =====================================================
 # RUBRIC
 # =====================================================
 
 class RubricSchema(BaseModel):
 
     text: str
+
     grade: int
+
     chapter: Optional[str] = None
 
 
@@ -22,16 +45,25 @@ class HomeopathyCaseCreate(BaseModel):
     chief_complaint: Optional[str] = None
 
     history_present: Optional[str] = None
+
     history_past: Optional[str] = None
+
     history_surgical: Optional[str] = None
+
     history_family: Optional[str] = None
 
     thermal_sensation: Optional[str] = None
+
     appetite: Optional[str] = None
+
     thirst: Optional[str] = None
+
     sleep: Optional[str] = None
+
     dreams: Optional[str] = None
+
     menstrual: Optional[str] = None
+
     mind_symptoms: Optional[str] = None
 
     particulars: Optional[Dict[str, Any]] = None
@@ -39,8 +71,11 @@ class HomeopathyCaseCreate(BaseModel):
     rubrics: Optional[List[RubricSchema]] = None
 
     remedy: Optional[str] = None
+
     potency: Optional[str] = None
+
     repetition: Optional[str] = None
+
     miasm: Optional[str] = None
 
 
@@ -51,12 +86,15 @@ class HomeopathyCaseCreate(BaseModel):
 class VitalsCreate(BaseModel):
 
     weight_kg: Optional[float] = None
+
     height_cm: Optional[float] = None
 
     bp_systolic: Optional[int] = None
+
     bp_diastolic: Optional[int] = None
 
     temperature: Optional[float] = None
+
     pulse_rate: Optional[int] = None
 
 
