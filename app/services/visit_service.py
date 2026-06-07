@@ -289,53 +289,18 @@ def save_homeopathy_case(
 
         db.add(case)
 
-    case.chief_complaint = (
-        data.chief_complaint
-    )
-
-    case.history_present = (
-        data.history_present
-    )
-
-    case.history_past = (
-        data.history_past
-    )
-
-    case.history_surgical = (
-        data.history_surgical
-    )
-
-    case.history_family = (
-        data.history_family
-    )
-
-    case.thermal_sensation = (
-        data.thermal_sensation
-    )
-
-    case.appetite = (
-        data.appetite
-    )
-
-    case.thirst = (
-        data.thirst
-    )
-
-    case.sleep = (
-        data.sleep
-    )
-
-    case.dreams = (
-        data.dreams
-    )
-
-    case.menstrual = (
-        data.menstrual
-    )
-
-    case.mind_symptoms = (
-        data.mind_symptoms
-    )
+    case.chief_complaint = data.chief_complaint
+    case.history_present = data.history_present
+    case.history_past = data.history_past
+    case.history_surgical = data.history_surgical
+    case.history_family = data.history_family
+    case.thermal_sensation = data.thermal_sensation
+    case.appetite = data.appetite
+    case.thirst = data.thirst
+    case.sleep = data.sleep
+    case.dreams = data.dreams
+    case.menstrual = data.menstrual
+    case.mind_symptoms = data.mind_symptoms
 
     case.particulars = json.dumps(
         data.particulars or {}
@@ -351,11 +316,8 @@ def save_homeopathy_case(
     )
 
     case.remedy = data.remedy
-
     case.potency = data.potency
-
     case.repetition = data.repetition
-
     case.miasm = data.miasm
 
     db.commit()
@@ -430,13 +392,18 @@ def close_visit(
 
         payment = Payment(
             visit_id = visit_id,
-            amount   = data.fee,
-            mode     = pay_mode
+            clinic_id = visit.clinic_id,
+            amount = data.fee,
+            mode = pay_mode
         )
 
         db.add(payment)
 
     else:
+
+        existing_payment.clinic_id = (
+            visit.clinic_id
+        )
 
         existing_payment.amount = (
             data.fee
@@ -488,12 +455,12 @@ def close_visit(
 
         followups = (
             schedule_followups_after_visit(
-                db         = db,
-                visit_id   = visit.id,
+                db = db,
+                visit_id = visit.id,
                 patient_id = str(
                     visit.patient_id
                 ),
-                clinic_id  = str(
+                clinic_id = str(
                     clinic_id
                 )
             )
@@ -539,340 +506,5 @@ def close_visit(
             f"{len(followups)} "
             f"follow-up reminders "
             f"scheduled."
-        )
-    }
-
-
-# =====================================================
-# PRIVATE HELPERS
-# =====================================================
-
-def _get_visit(
-    db: Session,
-    visit_id: str,
-    clinic_id: str
-) -> Visit:
-
-    visit = db.query(Visit).filter(
-        Visit.id        == visit_id,
-        Visit.clinic_id == clinic_id
-    ).first()
-
-    if not visit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Visit not found"
-        )
-
-    return visit
-
-
-# =====================================================
-# GET SINGLE VISIT
-# =====================================================
-
-def get_visit(
-    db,
-    visit_id: str,
-    clinic_id: str
-):
-
-    visit = db.query(Visit).filter(
-        Visit.id == visit_id,
-        Visit.clinic_id == clinic_id
-    ).first()
-
-    if not visit:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Visit not found"
-        )
-
-    return {
-
-        "id": str(visit.id),
-
-        "patient_id": (
-            str(visit.patient_id)
-            if visit.patient_id
-            else None
-        ),
-
-        "clinic_id": (
-            str(visit.clinic_id)
-            if visit.clinic_id
-            else None
-        ),
-
-        "type": (
-            visit.type.value
-            if hasattr(
-                visit.type,
-                "value"
-            )
-            else str(visit.type)
-        ),
-
-        "status": (
-            visit.visit_status
-            if hasattr(
-                visit,
-                "visit_status"
-            )
-            else "DRAFT"
-        ),
-
-        "chief_complaint": (
-            visit.chief_complaint
-        ),
-
-        "disease_type": (
-            visit.disease_type
-        ),
-
-        "fee": float(
-            visit.fee or 0
-        ),
-
-        "notes": (
-            visit.notes
-        ),
-
-        "episode_id": (
-            str(visit.episode_id)
-            if visit.episode_id
-            else None
-        ),
-
-        "payment_status": (
-            visit.payment_status.value
-            if (
-                hasattr(
-                    visit,
-                    "payment_status"
-                )
-                and visit.payment_status
-                and hasattr(
-                    visit.payment_status,
-                    "value"
-                )
-            )
-            else (
-                str(visit.payment_status)
-                if (
-                    hasattr(
-                        visit,
-                        "payment_status"
-                    )
-                    and visit.payment_status
-                )
-                else None
-            )
-        ),
-
-        "payment_mode": (
-            visit.payment_mode.value
-            if (
-                hasattr(
-                    visit,
-                    "payment_mode"
-                )
-                and visit.payment_mode
-                and hasattr(
-                    visit.payment_mode,
-                    "value"
-                )
-            )
-            else (
-                str(visit.payment_mode)
-                if (
-                    hasattr(
-                        visit,
-                        "payment_mode"
-                    )
-                    and visit.payment_mode
-                )
-                else None
-            )
-        ),
-
-        "visit_date": (
-            str(visit.visit_date)
-            if (
-                hasattr(
-                    visit,
-                    "visit_date"
-                )
-                and visit.visit_date
-            )
-            else None
-        ),
-
-        "created_at": (
-            str(visit.created_at)
-            if (
-                hasattr(
-                    visit,
-                    "created_at"
-                )
-                and visit.created_at
-            )
-            else None
-        ),
-
-        "closed_at": (
-            str(visit.closed_at)
-            if visit.closed_at
-            else None
-        ),
-    }
-
-# =====================================================
-# VISIT WIZARD STATE
-# =====================================================
-
-def get_visit_wizard_state(
-    db: Session,
-    visit_id: str,
-    clinic_id: str
-):
-
-    visit = _get_visit(
-        db,
-        visit_id,
-        clinic_id
-    )
-
-    homeopathy_case = None
-    vitals = None
-    prescription = None
-
-    # ─────────────────────────────────────────────
-    # HOMEOPATHY CASE
-    # ─────────────────────────────────────────────
-
-    if hasattr(visit, "homeopathy_case"):
-
-        hc = visit.homeopathy_case
-
-        if hc:
-
-            homeopathy_case = {
-
-                "chief_complaint": hc.chief_complaint,
-
-                "history_present": hc.history_present,
-
-                "history_past": hc.history_past,
-
-                "history_family": hc.history_family,
-
-                "mind_symptoms": hc.mind_symptoms,
-
-                "thermal_sensation": hc.thermal_sensation,
-
-                "appetite": hc.appetite,
-
-                "thirst": hc.thirst,
-
-                "sleep": hc.sleep,
-
-                "remedy": hc.remedy,
-
-                "potency": hc.potency,
-
-                "repetition": hc.repetition,
-
-                "miasm": hc.miasm,
-
-                "rubrics": (
-                    json.loads(hc.rubrics)
-                    if hc.rubrics
-                    else []
-                )
-            }
-
-    # ─────────────────────────────────────────────
-    # VITALS
-    # ─────────────────────────────────────────────
-
-    if hasattr(visit, "vitals"):
-
-        v = visit.vitals
-
-        if v:
-
-            vitals = {
-
-                "weight_kg": v.weight_kg,
-
-                "height_cm": v.height_cm,
-
-                "bp_systolic": v.bp_systolic,
-
-                "bp_diastolic": v.bp_diastolic,
-
-                "temperature": v.temperature,
-
-                "pulse_rate": v.pulse_rate
-            }
-
-    # ─────────────────────────────────────────────
-    # ALLOPATHY RX
-    # ─────────────────────────────────────────────
-
-    if hasattr(visit, "allopathy_rx"):
-
-        rx = visit.allopathy_rx
-
-        if rx:
-
-            prescription = {
-
-                "medicines": (
-                    json.loads(rx.medicines)
-                    if rx.medicines
-                    else []
-                ),
-
-                "advice": rx.advice,
-
-                "next_visit_date": (
-                    str(rx.next_visit_date)
-                    if rx.next_visit_date
-                    else None
-                )
-            }
-
-    return {
-
-        "visit": {
-            "id": str(visit.id),
-            "type": (
-                visit.type.value
-                if hasattr(visit.type, "value")
-                else str(visit.type)
-            ),
-            "status": (
-                visit.visit_status
-                if hasattr(visit, "visit_status")
-                else "DRAFT"
-            ),
-            "chief_complaint": (
-                visit.chief_complaint
-            ),
-            "notes": visit.notes,
-            "fee": float(visit.fee or 0)
-        },
-
-        "homeopathy_case": (
-            homeopathy_case
-        ),
-
-        "vitals": vitals,
-
-        "prescription": (
-            prescription
         )
     }
