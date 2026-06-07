@@ -395,6 +395,7 @@ def close_visit(
 
     payment = Payment(
         visit_id=visit.id,
+        clinic_id=visit.clinic_id,
         amount=data.fee
     )
 

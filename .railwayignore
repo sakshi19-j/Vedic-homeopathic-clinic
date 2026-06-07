@@ -1,0 +1,9 @@
+venv
+__pycache__
+.git
+node_modules
+dist
+build
+.env
+.pytest_cache
+.mypy_cache

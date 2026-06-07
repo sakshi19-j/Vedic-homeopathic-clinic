@@ -1,34 +1,56 @@
 import httpx
 import os
 import logging
+import asyncio
 from datetime import datetime
 from sqlalchemy.orm import Session
 import pytz
 
 logger = logging.getLogger(__name__)
-IST = pytz.timezone("Asia/Kolkata")
+IST    = pytz.timezone("Asia/Kolkata")
 
 # =====================================================
-# DAILY RATE LIMIT
-# Meta free tier: 1000 messages/day per phone number
-# We guard at 950 to leave headroom
+# RATE LIMIT — DB-backed so survives deploys
 # =====================================================
-_daily_counts: dict = {}   # { "clinic_id:YYYY-MM-DD": count }
-DAILY_LIMIT = 950
+# FIX: in-memory dict resets on every Railway restart
+# Use DB-based count via WhatsAppLog instead
+# =====================================================
+
+DAILY_LIMIT = int(os.getenv("WHATSAPP_DAILY_LIMIT", "950"))
 
 
-def _check_rate_limit(clinic_id: str) -> bool:
-    """Returns True if send is allowed, False if limit reached."""
-    today = datetime.now(IST).strftime("%Y-%m-%d")
-    key   = f"{clinic_id}:{today}"
-    count = _daily_counts.get(key, 0)
-    if count >= DAILY_LIMIT:
-        logger.warning(
-            f"Rate limit reached for clinic {clinic_id} on {today}"
-        )
-        return False
-    _daily_counts[key] = count + 1
-    return True
+def _check_rate_limit_db(clinic_id: str, db: Session) -> bool:
+    """
+    DB-backed rate limit — survives server restarts.
+    Counts today's outbound sends from whatsapp_logs.
+    Falls back to allow if DB unavailable.
+    """
+    if not db or not clinic_id:
+        return True
+
+    try:
+        from app.models.reminder import WhatsAppLog, DeliveryStatus
+        today_start = datetime.now(IST).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).replace(tzinfo=None)
+
+        count = db.query(WhatsAppLog).filter(
+            WhatsAppLog.clinic_id  == str(clinic_id),
+            WhatsAppLog.direction  == "outbound",
+            WhatsAppLog.created_at >= today_start
+        ).count()
+
+        if count >= DAILY_LIMIT:
+            logger.warning(
+                f"Rate limit: clinic={clinic_id} "
+                f"sent={count} limit={DAILY_LIMIT}"
+            )
+            return False
+        return True
+
+    except Exception as e:
+        logger.error(f"Rate limit check failed: {e} — allowing send")
+        return True
 
 
 # =====================================================
@@ -36,25 +58,16 @@ def _check_rate_limit(clinic_id: str) -> bool:
 # =====================================================
 
 def normalize_phone(phone: str) -> str:
-    """
-    Always returns 12-digit format: 919876543210
-    Handles: 9876543210 / +919876543210 / 91 9876... / 0091...
-    """
+    """Returns 12-digit: 919876543210"""
     if not phone:
         return ""
-
     phone = phone.strip().replace(" ", "").replace("-", "")
-
     if phone.startswith("+"):
         phone = phone[1:]
-
     if phone.startswith("0091"):
         phone = phone[4:]
-
-    # Only add 91 if it's a bare 10-digit number
     if len(phone) == 10 and not phone.startswith("91"):
         phone = f"91{phone}"
-
     return phone
 
 
@@ -70,14 +83,10 @@ def get_headers() -> dict:
 
 
 def get_api_url() -> str:
-    phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-    # Version as env var — upgrade without code change
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     version  = os.getenv("WHATSAPP_API_VERSION", "v19.0")
-    base_url = os.getenv(
-        "WHATSAPP_API_URL",
-        f"https://graph.facebook.com/{version}"
-    )
-    return f"{base_url}/{phone_number_id}/messages"
+    base     = os.getenv("WHATSAPP_API_URL", f"https://graph.facebook.com/{version}")
+    return f"{base}/{phone_id}/messages"
 
 
 # =====================================================
@@ -85,54 +94,98 @@ def get_api_url() -> str:
 # =====================================================
 
 def _write_log(
-    db: Session,
-    clinic_id: str,
-    patient_id: str,
-    phone: str,
-    body: str,
-    result: dict,
+    db: Session, clinic_id: str, patient_id: str,
+    phone: str, body: str, result: dict,
     template_key: str = None,
     trigger: str = "manual",
     direction: str = "outbound"
 ):
-    """
-    Persist every WhatsApp send attempt to whatsapp_logs.
-    Called after every send — success or failure.
-    """
     if db is None:
         return
-
     try:
         from app.models.reminder import WhatsAppLog, DeliveryStatus
-
         status_map = {
-            "sent":    DeliveryStatus.SENT,
-            "mocked":  DeliveryStatus.MOCKED,
-            "failed":  DeliveryStatus.FAILED,
+            "sent":   DeliveryStatus.SENT,
+            "mocked": DeliveryStatus.MOCKED,
+            "failed": DeliveryStatus.FAILED,
         }
-
         log = WhatsAppLog(
-            clinic_id       = clinic_id,
-            patient_id      = patient_id,
+            clinic_id       = str(clinic_id) if clinic_id else "unknown",
+            patient_id      = str(patient_id) if patient_id else None,
             direction       = direction,
             phone           = phone,
             message_type    = "template" if template_key else "text",
             template_key    = template_key,
-            body            = body,
+            body            = (body or "")[:500],
             message_id      = result.get("message_id"),
             delivery_status = status_map.get(
                 result.get("status", "failed"),
                 DeliveryStatus.FAILED
             ),
-            error_text      = result.get("error"),
-            trigger         = trigger,
+            error_text = result.get("error"),
+            trigger    = trigger,
         )
         db.add(log)
         db.commit()
-
     except Exception as e:
-        # Never let logging crash the main flow
         logger.error(f"WhatsApp log write failed: {e}")
+
+
+# =====================================================
+# RETRY HELPER
+# =====================================================
+
+async def _send_with_retry(
+    payload: dict,
+    max_retries: int = 2,
+    base_delay: float = 2.0
+) -> tuple[int, dict]:
+    """
+    Exponential backoff retry for transient Meta API failures.
+    Retries on: 429 (rate limited), 5xx (server errors).
+    Does NOT retry on: 400 (bad request), 401 (auth), 403 (forbidden).
+    Returns (status_code, response_data).
+    """
+    last_status = 500
+    last_data   = {}
+
+    for attempt in range(max_retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    get_api_url(),
+                    headers=get_headers(),
+                    json=payload
+                )
+                last_status = response.status_code
+                last_data   = response.json()
+
+                # Success
+                if last_status == 200:
+                    return last_status, last_data
+
+                # Don't retry client errors
+                if last_status in (400, 401, 403, 404):
+                    return last_status, last_data
+
+                # Retry on 429 or 5xx
+                if attempt < max_retries:
+                    delay = base_delay * (2 ** attempt)  # 2s, 4s
+                    logger.warning(
+                        f"WhatsApp API {last_status} — "
+                        f"retry {attempt+1}/{max_retries} in {delay}s"
+                    )
+                    await asyncio.sleep(delay)
+
+        except httpx.TimeoutException:
+            logger.warning(f"WhatsApp timeout — attempt {attempt+1}")
+            if attempt < max_retries:
+                await asyncio.sleep(base_delay * (2 ** attempt))
+        except Exception as e:
+            logger.error(f"WhatsApp exception: {e}")
+            return 500, {"error": {"message": str(e)}}
+
+    return last_status, last_data
 
 
 # =====================================================
@@ -149,12 +202,14 @@ async def send_text_message(
 ) -> dict:
 
     normalized = normalize_phone(phone)
+    if not normalized:
+        return {"status": "failed", "error": "Invalid phone number"}
 
-    # Rate limit check
-    if clinic_id and not _check_rate_limit(clinic_id):
+    # DB-backed rate limit
+    if clinic_id and not _check_rate_limit_db(clinic_id, db):
         result = {
             "status": "failed",
-            "error":  "Daily WhatsApp limit reached (950/day)",
+            "error":  f"Daily WhatsApp limit reached ({DAILY_LIMIT}/day)",
             "phone":  normalized
         }
         _write_log(db, clinic_id, patient_id, normalized, message, result, trigger=trigger)
@@ -175,29 +230,18 @@ async def send_text_message(
         "text":              {"body": message}
     }
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            response = await client.post(
-                get_api_url(),
-                headers=get_headers(),
-                json=payload
-            )
-            data = response.json()
+    status_code, data = await _send_with_retry(payload)
 
-            if response.status_code == 200:
-                result = {
-                    "status":     "sent",
-                    "message_id": data.get("messages", [{}])[0].get("id", ""),
-                    "phone":      normalized
-                }
-            else:
-                error_msg = data.get("error", {}).get("message", "Unknown error")
-                logger.error(f"WhatsApp send failed: {error_msg} | to={normalized}")
-                result = {"status": "failed", "error": error_msg, "phone": normalized}
-
-        except Exception as e:
-            logger.error(f"WhatsApp exception: {e} | to={normalized}")
-            result = {"status": "failed", "error": str(e), "phone": normalized}
+    if status_code == 200:
+        result = {
+            "status":     "sent",
+            "message_id": data.get("messages", [{}])[0].get("id", ""),
+            "phone":      normalized
+        }
+    else:
+        error_msg = data.get("error", {}).get("message", "Unknown error")
+        logger.error(f"WhatsApp failed: {error_msg} | to={normalized} | status={status_code}")
+        result = {"status": "failed", "error": error_msg, "phone": normalized}
 
     _write_log(db, clinic_id, patient_id, normalized, message, result, trigger=trigger)
     return result
@@ -208,14 +252,10 @@ async def send_text_message(
 # =====================================================
 
 async def send_template_message(
-    phone: str,
-    template_name: str,
-    language: str,
-    components: list,
-    db: Session = None,
-    clinic_id: str = None,
-    patient_id: str = None,
-    trigger: str = "manual"
+    phone: str, template_name: str,
+    language: str, components: list,
+    db: Session = None, clinic_id: str = None,
+    patient_id: str = None, trigger: str = "manual"
 ) -> dict:
 
     normalized = normalize_phone(phone)
@@ -237,27 +277,20 @@ async def send_template_message(
         }
     }
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            response = await client.post(
-                get_api_url(), headers=get_headers(), json=payload
-            )
-            data = response.json()
+    status_code, data = await _send_with_retry(payload)
 
-            if response.status_code == 200:
-                result = {
-                    "status":     "sent",
-                    "message_id": data.get("messages", [{}])[0].get("id", ""),
-                    "template":   template_name
-                }
-            else:
-                result = {
-                    "status": "failed",
-                    "error":  data.get("error", {}).get("message", "Unknown"),
-                    "phone":  normalized
-                }
-        except Exception as e:
-            result = {"status": "failed", "error": str(e)}
+    if status_code == 200:
+        result = {
+            "status":     "sent",
+            "message_id": data.get("messages", [{}])[0].get("id", ""),
+            "template":   template_name
+        }
+    else:
+        result = {
+            "status": "failed",
+            "error":  data.get("error", {}).get("message", "Unknown"),
+            "phone":  normalized
+        }
 
     _write_log(db, clinic_id, patient_id, normalized, f"[template:{template_name}]",
                result, template_key=template_name, trigger=trigger)
@@ -272,22 +305,17 @@ async def send_followup_reminder(
     phone: str, patient_name: str, doctor_name: str,
     clinic_name: str, clinic_phone: str,
     language: str = "en", followup_type: str = "followup_7d",
-    db: Session = None, clinic_id: str = None,
-    patient_id: str = None
+    db: Session = None, clinic_id: str = None, patient_id: str = None
 ) -> dict:
-
     from app.services.notification_service import get_template, fill_template
-
-    template = get_template(followup_type, language)
-    message  = fill_template(
-        template=template, patient_name=patient_name,
-        doctor_name=doctor_name, clinic_name=clinic_name,
-        clinic_phone=clinic_phone
+    msg = fill_template(
+        get_template(followup_type, language),
+        patient_name=patient_name, doctor_name=doctor_name,
+        clinic_name=clinic_name, clinic_phone=clinic_phone
     )
     return await send_text_message(
-        phone, message, db=db,
-        clinic_id=clinic_id, patient_id=patient_id,
-        trigger="followup_cron"
+        phone, msg, db=db, clinic_id=clinic_id,
+        patient_id=patient_id, trigger="followup_cron"
     )
 
 
@@ -295,42 +323,32 @@ async def send_thankyou_message(
     phone: str, patient_name: str, doctor_name: str,
     clinic_name: str, clinic_phone: str,
     language: str = "en",
-    db: Session = None, clinic_id: str = None,
-    patient_id: str = None
+    db: Session = None, clinic_id: str = None, patient_id: str = None
 ) -> dict:
-
     from app.services.notification_service import get_template, fill_template
-
-    template = get_template("thankyou", language)
-    message  = fill_template(
-        template=template, patient_name=patient_name,
-        doctor_name=doctor_name, clinic_name=clinic_name,
-        clinic_phone=clinic_phone
+    msg = fill_template(
+        get_template("thankyou", language),
+        patient_name=patient_name, doctor_name=doctor_name,
+        clinic_name=clinic_name, clinic_phone=clinic_phone
     )
     return await send_text_message(
-        phone, message, db=db,
-        clinic_id=clinic_id, patient_id=patient_id,
-        trigger="visit_close"
+        phone, msg, db=db, clinic_id=clinic_id,
+        patient_id=patient_id, trigger="visit_close"
     )
 
 
 async def send_birthday_message(
     phone: str, patient_name: str, doctor_name: str,
     clinic_name: str, language: str = "en",
-    db: Session = None, clinic_id: str = None,
-    patient_id: str = None
+    db: Session = None, clinic_id: str = None, patient_id: str = None
 ) -> dict:
-
     from app.services.notification_service import get_template, fill_template
-
-    template = get_template("birthday", language)
-    message  = fill_template(
-        template=template, patient_name=patient_name,
-        doctor_name=doctor_name, clinic_name=clinic_name,
-        clinic_phone=""
+    msg = fill_template(
+        get_template("birthday", language),
+        patient_name=patient_name, doctor_name=doctor_name,
+        clinic_name=clinic_name, clinic_phone=""
     )
     return await send_text_message(
-        phone, message, db=db,
-        clinic_id=clinic_id, patient_id=patient_id,
-        trigger="birthday_cron"
+        phone, msg, db=db, clinic_id=clinic_id,
+        patient_id=patient_id, trigger="birthday_cron"
     )

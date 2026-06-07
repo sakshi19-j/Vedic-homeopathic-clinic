@@ -222,14 +222,11 @@ def login_user(
     data: LoginRequest
 ) -> dict:
     """
-    Login using email OR phone.
+    Login using email.
     """
 
     user = db.query(User).filter(
-        or_(
-            User.email == data.login,
-            User.phone == data.login
-        )
+        User.email == data.email
     ).first()
 
     # -----------------------------------------------------
@@ -242,7 +239,7 @@ def login_user(
     ):
         raise HTTPException(
             status_code=401,
-            detail="Invalid email/phone or password."
+            detail="Invalid email or password."
         )
 
     # -----------------------------------------------------

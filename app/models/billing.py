@@ -1,21 +1,34 @@
+import uuid
+
 from sqlalchemy import (
     Column,
-    String,
-    Numeric,
-    Enum as SQLEnum,
-    ForeignKey
+    DateTime,
+    ForeignKey,
+    Numeric
 )
 
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
-from app.models.base import BaseModel
-from app.models.visit import PaymentMode
+from app.database import Base
 
 
-class Payment(BaseModel):
+class Payment(Base):
 
     __tablename__ = "payments"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+
+    visit_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("visits.id"),
+        nullable=False
+    )
 
     clinic_id = Column(
         UUID(as_uuid=True),
@@ -23,30 +36,14 @@ class Payment(BaseModel):
         nullable=False
     )
 
-    visit_id = Column(
-        String,
-        ForeignKey("visits.id"),
-        unique=True
-    )
-
     amount = Column(
         Numeric(10, 2),
         nullable=False
     )
 
-    mode = Column(
-        SQLEnum(PaymentMode),
-        nullable=False
-    )
-
-    transaction_ref = Column(
-        String,
-        nullable=True
-    )
-
-    receipt_url = Column(
-        String,
-        nullable=True
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
     )
 
     visit = relationship(
