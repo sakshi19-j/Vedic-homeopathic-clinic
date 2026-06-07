@@ -6,7 +6,6 @@ from app.models.visit import (
     Visit,
     VisitStatus,
     PaymentStatus,
-    PaymentMode,
     HomeopathyCase,
     Vitals
 )
@@ -177,6 +176,7 @@ def get_visit_wizard_state(
             {
                 "id": payment.id,
                 "amount": float(payment.amount or 0),
+                "mode": payment.mode,
                 "reference_no": payment.reference_no,
                 "notes": payment.notes
             }
@@ -229,7 +229,8 @@ def close_visit(
         payment = Payment(
             visit_id=visit.id,
             clinic_id=visit.clinic_id,
-            amount=data.fee
+            amount=data.fee,
+            mode=data.payment_mode
         )
 
         db.add(payment)
@@ -238,8 +239,11 @@ def close_visit(
     # UPDATE PAYMENT
     # =====================================================
 
-    payment.clinic_id = visit.clinic_id
-    payment.amount = data.fee
+    else:
+
+        payment.clinic_id = visit.clinic_id
+        payment.amount = data.fee
+        payment.mode = data.payment_mode
 
     # =====================================================
     # SAVE
