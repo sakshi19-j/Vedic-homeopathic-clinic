@@ -727,3 +727,152 @@ def get_visit(
             else None
         ),
     }
+
+# =====================================================
+# VISIT WIZARD STATE
+# =====================================================
+
+def get_visit_wizard_state(
+    db: Session,
+    visit_id: str,
+    clinic_id: str
+):
+
+    visit = _get_visit(
+        db,
+        visit_id,
+        clinic_id
+    )
+
+    homeopathy_case = None
+    vitals = None
+    prescription = None
+
+    # ─────────────────────────────────────────────
+    # HOMEOPATHY CASE
+    # ─────────────────────────────────────────────
+
+    if hasattr(visit, "homeopathy_case"):
+
+        hc = visit.homeopathy_case
+
+        if hc:
+
+            homeopathy_case = {
+
+                "chief_complaint": hc.chief_complaint,
+
+                "history_present": hc.history_present,
+
+                "history_past": hc.history_past,
+
+                "history_family": hc.history_family,
+
+                "mind_symptoms": hc.mind_symptoms,
+
+                "thermal_sensation": hc.thermal_sensation,
+
+                "appetite": hc.appetite,
+
+                "thirst": hc.thirst,
+
+                "sleep": hc.sleep,
+
+                "remedy": hc.remedy,
+
+                "potency": hc.potency,
+
+                "repetition": hc.repetition,
+
+                "miasm": hc.miasm,
+
+                "rubrics": (
+                    json.loads(hc.rubrics)
+                    if hc.rubrics
+                    else []
+                )
+            }
+
+    # ─────────────────────────────────────────────
+    # VITALS
+    # ─────────────────────────────────────────────
+
+    if hasattr(visit, "vitals"):
+
+        v = visit.vitals
+
+        if v:
+
+            vitals = {
+
+                "weight_kg": v.weight_kg,
+
+                "height_cm": v.height_cm,
+
+                "bp_systolic": v.bp_systolic,
+
+                "bp_diastolic": v.bp_diastolic,
+
+                "temperature": v.temperature,
+
+                "pulse_rate": v.pulse_rate
+            }
+
+    # ─────────────────────────────────────────────
+    # ALLOPATHY RX
+    # ─────────────────────────────────────────────
+
+    if hasattr(visit, "allopathy_rx"):
+
+        rx = visit.allopathy_rx
+
+        if rx:
+
+            prescription = {
+
+                "medicines": (
+                    json.loads(rx.medicines)
+                    if rx.medicines
+                    else []
+                ),
+
+                "advice": rx.advice,
+
+                "next_visit_date": (
+                    str(rx.next_visit_date)
+                    if rx.next_visit_date
+                    else None
+                )
+            }
+
+    return {
+
+        "visit": {
+            "id": str(visit.id),
+            "type": (
+                visit.type.value
+                if hasattr(visit.type, "value")
+                else str(visit.type)
+            ),
+            "status": (
+                visit.visit_status
+                if hasattr(visit, "visit_status")
+                else "DRAFT"
+            ),
+            "chief_complaint": (
+                visit.chief_complaint
+            ),
+            "notes": visit.notes,
+            "fee": float(visit.fee or 0)
+        },
+
+        "homeopathy_case": (
+            homeopathy_case
+        ),
+
+        "vitals": vitals,
+
+        "prescription": (
+            prescription
+        )
+    }
