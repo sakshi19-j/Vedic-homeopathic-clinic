@@ -24,6 +24,30 @@ class VisitCreate(BaseModel):
 
 
 # =====================================================
+# ALLPATHY INPUT
+# =====================================================
+
+class MedicineItem(BaseModel):
+
+    medicine_name: str
+
+    dosage: Optional[str] = None
+
+    frequency: Optional[str] = None
+
+    duration: Optional[str] = None
+
+
+class AllopathyInput(BaseModel):
+
+    medicines: Optional[List[MedicineItem]] = None
+
+    advice: Optional[str] = None
+
+    next_visit_date: Optional[str] = None
+
+
+# =====================================================
 # RUBRIC
 # =====================================================
 
