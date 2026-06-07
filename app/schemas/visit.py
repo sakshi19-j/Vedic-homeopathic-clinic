@@ -144,3 +144,4 @@ class CloseVisitRequest(BaseModel):
 VitalsInput = VitalsCreate
 
 HomeopathyCaseInput = HomeopathyCaseCreate
+HomeopathyInput = HomeopathyCaseCreate
