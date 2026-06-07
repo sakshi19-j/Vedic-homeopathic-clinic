@@ -16,6 +16,7 @@ from app.models.visit import (
     VisitType,
     Vitals,
 )
+
 from app.schemas.visit import (
     AllopathyInput,
     CloseVisitInput,
@@ -23,9 +24,10 @@ from app.schemas.visit import (
     VisitCreate,
     VitalsInput,
 )
-from fastapi import HTTPException
 
-from app.services.growth_service import update_patient_stats
+from app.services.growth_service import (
+    update_patient_stats
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,7 @@ IST = pytz.timezone("Asia/Kolkata")
 # =====================================================
 
 CLINIC_FIELDS = {
+
     "HOMEOPATHY": [
         "chief_complaint",
         "miasm",
@@ -48,6 +51,7 @@ CLINIC_FIELDS = {
         "potency",
         "dose",
     ],
+
     "ALLOPATHY": [
         "chief_complaint",
         "history",
@@ -58,6 +62,7 @@ CLINIC_FIELDS = {
         "advice",
         "follow_up_days",
     ],
+
     "AYURVEDIC": [
         "chief_complaint",
         "prakriti",
@@ -78,7 +83,10 @@ VISIT_TYPE_MAP = {
 # GET CONSULTATION SCHEMA
 # =====================================================
 
-def get_consultation_schema(clinic_type: str) -> list:
+def get_consultation_schema(
+    clinic_type: str
+) -> list:
+
     return CLINIC_FIELDS.get(
         clinic_type.upper(),
         CLINIC_FIELDS["ALLOPATHY"]
@@ -116,12 +124,15 @@ def create_visit(
     )
 
     db.add(visit)
+
     db.commit()
+
     db.refresh(visit)
 
     logger.info(
         f"Visit created: {visit.id} | "
-        f"Clinic: {clinic_id} | Type: {visit_type.value}"
+        f"Clinic: {clinic_id} | "
+        f"Type: {visit_type.value}"
     )
 
     return visit
@@ -138,12 +149,20 @@ def save_vitals(
     data: VitalsInput
 ) -> dict:
 
-    visit = _get_visit(db, visit_id, clinic_id)
+    visit = _get_visit(
+        db,
+        visit_id,
+        clinic_id
+    )
 
     vitals = visit.vitals
 
     if not vitals:
-        vitals = Vitals(visit_id=visit_id)
+
+        vitals = Vitals(
+            visit_id=visit_id
+        )
+
         db.add(vitals)
 
     vitals.weight_kg    = data.weight_kg
@@ -156,16 +175,29 @@ def save_vitals(
     db.commit()
 
     bp = ""
-    if data.bp_systolic and data.bp_diastolic:
-        bp = f"{data.bp_systolic}/{data.bp_diastolic}"
+
+    if (
+        data.bp_systolic
+        and data.bp_diastolic
+    ):
+        bp = (
+            f"{data.bp_systolic}/"
+            f"{data.bp_diastolic}"
+        )
 
     return {
-        "message":     "Vitals saved",
-        "weight_kg":   data.weight_kg,
-        "height_cm":   data.height_cm,
-        "bp":          bp,
+
+        "message": "Vitals saved",
+
+        "weight_kg": data.weight_kg,
+
+        "height_cm": data.height_cm,
+
+        "bp": bp,
+
         "temperature": data.temperature,
-        "pulse_rate":  data.pulse_rate
+
+        "pulse_rate": data.pulse_rate
     }
 
 
@@ -180,25 +212,53 @@ def save_allopathy_rx(
     data: AllopathyInput
 ) -> dict:
 
-    visit = _get_visit(db, visit_id, clinic_id)
+    visit = _get_visit(
+        db,
+        visit_id,
+        clinic_id
+    )
 
     rx = visit.allopathy_rx
 
     if not rx:
-        rx = AllopathyRx(visit_id=visit_id)
+
+        rx = AllopathyRx(
+            visit_id=visit_id
+        )
+
         db.add(rx)
 
-    rx.medicines       = json.dumps([m.model_dump() for m in data.medicines])
-    rx.advice          = data.advice
-    rx.next_visit_date = data.next_visit_date
+    rx.medicines = json.dumps(
+        [
+            m.model_dump()
+            for m in data.medicines
+        ]
+    )
+
+    rx.advice = data.advice
+
+    rx.next_visit_date = (
+        data.next_visit_date
+    )
 
     db.commit()
 
     return {
-        "message":         "Prescription saved",
-        "medicines_count": len(data.medicines),
-        "advice":          data.advice,
-        "next_visit_date": str(data.next_visit_date or "")
+
+        "message": "Prescription saved",
+
+        "medicines_count": (
+            len(data.medicines)
+        ),
+
+        "advice": data.advice,
+
+        "next_visit_date": (
+            str(
+                data.next_visit_date
+                or ""
+            )
+        )
     }
 
 
@@ -213,44 +273,106 @@ def save_homeopathy_case(
     data: HomeopathyInput
 ) -> dict:
 
-    visit = _get_visit(db, visit_id, clinic_id)
+    visit = _get_visit(
+        db,
+        visit_id,
+        clinic_id
+    )
 
     case = visit.homeopathy_case
 
     if not case:
-        case = HomeopathyCase(visit_id=visit_id)
+
+        case = HomeopathyCase(
+            visit_id=visit_id
+        )
+
         db.add(case)
 
-    case.chief_complaint   = data.chief_complaint
-    case.history_present   = data.history_present
-    case.history_past      = data.history_past
-    case.history_surgical  = data.history_surgical
-    case.history_family    = data.history_family
-    case.thermal_sensation = data.thermal_sensation
-    case.appetite          = data.appetite
-    case.thirst            = data.thirst
-    case.sleep             = data.sleep
-    case.dreams            = data.dreams
-    case.menstrual         = data.menstrual
-    case.mind_symptoms     = data.mind_symptoms
-    case.particulars       = json.dumps(data.particulars or {})
-    case.rubrics           = json.dumps(
-        [r.model_dump() for r in data.rubrics]
-        if data.rubrics else []
+    case.chief_complaint = (
+        data.chief_complaint
     )
 
-    case.remedy     = data.remedy
-    case.potency    = data.potency
+    case.history_present = (
+        data.history_present
+    )
+
+    case.history_past = (
+        data.history_past
+    )
+
+    case.history_surgical = (
+        data.history_surgical
+    )
+
+    case.history_family = (
+        data.history_family
+    )
+
+    case.thermal_sensation = (
+        data.thermal_sensation
+    )
+
+    case.appetite = (
+        data.appetite
+    )
+
+    case.thirst = (
+        data.thirst
+    )
+
+    case.sleep = (
+        data.sleep
+    )
+
+    case.dreams = (
+        data.dreams
+    )
+
+    case.menstrual = (
+        data.menstrual
+    )
+
+    case.mind_symptoms = (
+        data.mind_symptoms
+    )
+
+    case.particulars = json.dumps(
+        data.particulars or {}
+    )
+
+    case.rubrics = json.dumps(
+        [
+            r.model_dump()
+            for r in data.rubrics
+        ]
+        if data.rubrics
+        else []
+    )
+
+    case.remedy = data.remedy
+
+    case.potency = data.potency
+
     case.repetition = data.repetition
-    case.miasm      = data.miasm
+
+    case.miasm = data.miasm
 
     db.commit()
 
     return {
-        "message":       "Homeopathy case saved",
-        "remedy":        data.remedy,
-        "potency":       data.potency,
-        "rubrics_count": len(data.rubrics) if data.rubrics else 0
+
+        "message": "Homeopathy case saved",
+
+        "remedy": data.remedy,
+
+        "potency": data.potency,
+
+        "rubrics_count": (
+            len(data.rubrics)
+            if data.rubrics
+            else 0
+        )
     }
 
 
@@ -265,26 +387,42 @@ def close_visit(
     data: CloseVisitInput
 ) -> dict:
 
-    visit = _get_visit(db, visit_id, clinic_id)
+    visit = _get_visit(
+        db,
+        visit_id,
+        clinic_id
+    )
 
-    if visit.closed_at or visit.visit_status == "COMPLETED":
+    if (
+        visit.closed_at
+        or visit.visit_status == "COMPLETED"
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Visit is already closed"
         )
 
     try:
-        pay_mode = PaymentMode[data.payment_mode.upper()]
+
+        pay_mode = PaymentMode[
+            data.payment_mode.upper()
+        ]
+
     except KeyError:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Invalid payment mode: {data.payment_mode}. "
-                f"Valid: CASH, CARD, UPI, ONLINE"
+                f"Invalid payment mode: "
+                f"{data.payment_mode}. "
+                f"Valid: CASH, CARD, "
+                f"UPI, ONLINE"
             )
         )
 
-    existing_payment = db.query(Payment).filter(
+    existing_payment = db.query(
+        Payment
+    ).filter(
         Payment.visit_id == visit_id
     ).first()
 
@@ -300,37 +438,45 @@ def close_visit(
 
     else:
 
-        existing_payment.amount = data.fee
-        existing_payment.mode   = pay_mode
+        existing_payment.amount = (
+            data.fee
+        )
 
-    visit.fee            = data.fee
-    visit.disease_type   = (
+        existing_payment.mode = (
+            pay_mode
+        )
+
+    visit.fee = data.fee
+
+    visit.disease_type = (
         data.disease_type
         or visit.disease_type
         or "default"
     )
 
-    visit.payment_status = PaymentStatus.PAID
-    visit.payment_mode   = pay_mode
-    visit.closed_at      = datetime.now(IST)
-    visit.visit_status   = "COMPLETED"
+    visit.payment_status = (
+        PaymentStatus.PAID
+    )
+
+    visit.payment_mode = pay_mode
+
+    visit.closed_at = (
+        datetime.now(IST)
+    )
+
+    visit.visit_status = (
+        "COMPLETED"
+    )
 
     db.commit()
-    db.refresh(visit)
 
-    # =====================================================
-    # UPDATE PATIENT STATS
-    # =====================================================
+    db.refresh(visit)
 
     update_patient_stats(
         db,
         visit.patient_id,
         float(data.fee)
     )
-
-    # =====================================================
-    # AUTO-SCHEDULE FOLLOWUPS
-    # =====================================================
 
     followups = []
 
@@ -340,123 +486,25 @@ def close_visit(
             schedule_followups_after_visit
         )
 
-        followups = schedule_followups_after_visit(
-            db         = db,
-            visit_id   = visit.id,
-            patient_id = str(visit.patient_id),
-            clinic_id  = str(clinic_id)
-        )
-
-    except Exception as e:
-
-        logger.error(
-            f"Follow-up scheduling failed for "
-            f"visit {visit.id}: {e}"
-        )
-
-    # =====================================================
-    # SEND THANK-YOU WHATSAPP
-    # =====================================================
-
-    try:
-
-        import asyncio
-
-        from app.services.whatsapp_service import (
-            send_template_message
-        )
-
-        from app.models.patient import (
-            Patient as PatientModel
-        )
-
-        from app.models.clinic import (
-            Clinic as ClinicModel
-        )
-
-        patient = db.query(PatientModel).filter(
-            PatientModel.id == visit.patient_id
-        ).first()
-
-        clinic = db.query(ClinicModel).filter(
-            ClinicModel.id == clinic_id
-        ).first()
-
-        if (
-            patient
-            and patient.phone_mobile
-            and not getattr(
-                patient,
-                "whatsapp_opted_out",
-                False
-            )
-        ):
-
-            async def _send():
-
-                return await send_template_message(
-                    phone         = patient.phone_mobile,
-                    template_name = "visit_thankyou",
-                    language      = "en",
-
-                    components = [
-                        {
-                            "type": "body",
-
-                            "parameters": [
-                                {
-                                    "type": "text",
-                                    "text": patient.first_name
-                                },
-
-                                {
-                                    "type": "text",
-                                    "text": (
-                                        clinic.phone
-                                        if clinic and clinic.phone
-                                        else "9765402949"
-                                    )
-                                },
-                            ]
-                        }
-                    ],
-
-                    db         = db,
-                    clinic_id  = str(clinic_id),
-                    patient_id = str(patient.id),
-                    trigger    = "visit_close"
+        followups = (
+            schedule_followups_after_visit(
+                db         = db,
+                visit_id   = visit.id,
+                patient_id = str(
+                    visit.patient_id
+                ),
+                clinic_id  = str(
+                    clinic_id
                 )
-
-            try:
-
-                loop = asyncio.get_event_loop()
-
-                if loop.is_running():
-
-                    asyncio.create_task(_send())
-
-                else:
-
-                    loop.run_until_complete(_send())
-
-            except RuntimeError:
-
-                new_loop = asyncio.new_event_loop()
-
-                new_loop.run_until_complete(_send())
-
-                new_loop.close()
+            )
+        )
 
     except Exception as e:
 
         logger.error(
-            f"Thank-you WhatsApp failed for "
-            f"visit {visit.id}: {e}"
+            f"Follow-up scheduling failed "
+            f"for visit {visit.id}: {e}"
         )
-
-    # =====================================================
-    # FINAL LOG
-    # =====================================================
 
     logger.info(
         f"Visit closed: {visit_id} | "
@@ -470,19 +518,30 @@ def close_visit(
 
         "visit_id": visit_id,
 
-        "amount_paid": float(data.fee),
+        "amount_paid": float(
+            data.fee
+        ),
 
-        "payment_mode": data.payment_mode.upper(),
+        "payment_mode": (
+            data.payment_mode.upper()
+        ),
 
-        "followups_scheduled": followups,
+        "followups_scheduled": (
+            followups
+        ),
 
-        "followups_count": len(followups),
+        "followups_count": (
+            len(followups)
+        ),
 
         "message": (
             f"Visit closed. "
-            f"{len(followups)} follow-up reminders scheduled."
+            f"{len(followups)} "
+            f"follow-up reminders "
+            f"scheduled."
         )
     }
+
 
 # =====================================================
 # PRIVATE HELPERS
@@ -507,12 +566,16 @@ def _get_visit(
 
     return visit
 
+
+# =====================================================
+# GET SINGLE VISIT
+# =====================================================
+
 def get_visit(
     db,
     visit_id: str,
     clinic_id: str
 ):
-    from app.models.visit import Visit
 
     visit = db.query(Visit).filter(
         Visit.id == visit_id,
@@ -520,31 +583,144 @@ def get_visit(
     ).first()
 
     if not visit:
+
         raise HTTPException(
             status_code=404,
             detail="Visit not found"
         )
 
     return {
+
         "id": str(visit.id),
-        "patient_id": str(visit.patient_id),
-        "clinic_id": str(visit.clinic_id),
-        "type": visit.type,
-        "status": visit.status,
-        "chief_complaint": visit.chief_complaint,
-        "disease_type": visit.disease_type,
-        "fee": float(visit.fee or 0),
-        "notes": visit.notes,
+
+        "patient_id": (
+            str(visit.patient_id)
+            if visit.patient_id
+            else None
+        ),
+
+        "clinic_id": (
+            str(visit.clinic_id)
+            if visit.clinic_id
+            else None
+        ),
+
+        "type": (
+            visit.type.value
+            if hasattr(
+                visit.type,
+                "value"
+            )
+            else str(visit.type)
+        ),
+
+        "status": (
+            visit.visit_status
+            if hasattr(
+                visit,
+                "visit_status"
+            )
+            else "DRAFT"
+        ),
+
+        "chief_complaint": (
+            visit.chief_complaint
+        ),
+
+        "disease_type": (
+            visit.disease_type
+        ),
+
+        "fee": float(
+            visit.fee or 0
+        ),
+
+        "notes": (
+            visit.notes
+        ),
+
         "episode_id": (
             str(visit.episode_id)
             if visit.episode_id
             else None
         ),
-        "created_at": (
-            str(visit.created_at)
-            if visit.created_at
+
+        "payment_status": (
+            visit.payment_status.value
+            if (
+                hasattr(
+                    visit,
+                    "payment_status"
+                )
+                and visit.payment_status
+                and hasattr(
+                    visit.payment_status,
+                    "value"
+                )
+            )
+            else (
+                str(visit.payment_status)
+                if (
+                    hasattr(
+                        visit,
+                        "payment_status"
+                    )
+                    and visit.payment_status
+                )
+                else None
+            )
+        ),
+
+        "payment_mode": (
+            visit.payment_mode.value
+            if (
+                hasattr(
+                    visit,
+                    "payment_mode"
+                )
+                and visit.payment_mode
+                and hasattr(
+                    visit.payment_mode,
+                    "value"
+                )
+            )
+            else (
+                str(visit.payment_mode)
+                if (
+                    hasattr(
+                        visit,
+                        "payment_mode"
+                    )
+                    and visit.payment_mode
+                )
+                else None
+            )
+        ),
+
+        "visit_date": (
+            str(visit.visit_date)
+            if (
+                hasattr(
+                    visit,
+                    "visit_date"
+                )
+                and visit.visit_date
+            )
             else None
         ),
+
+        "created_at": (
+            str(visit.created_at)
+            if (
+                hasattr(
+                    visit,
+                    "created_at"
+                )
+                and visit.created_at
+            )
+            else None
+        ),
+
         "closed_at": (
             str(visit.closed_at)
             if visit.closed_at
