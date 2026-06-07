@@ -87,6 +87,7 @@ def create_patient(
     return {
         "id": str(patient.id),
         "reg_no": patient.reg_no,
+        "title": patient.title,
         "first_name": patient.first_name,
         "middle_name": patient.middle_name,
         "last_name": patient.last_name,
