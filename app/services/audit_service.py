@@ -28,7 +28,7 @@ def log_action(
     entry = AuditLog(
         clinic_id   = str(user.clinic_id),
         user_id     = str(user.id),
-        user_name   = user.name,
+        user_name   = user.full_name,
         user_role   = user.role.value if hasattr(user.role, "value") else str(user.role),
         action      = action,
         resource    = resource,
