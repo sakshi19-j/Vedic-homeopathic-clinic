@@ -111,3 +111,12 @@ class CloseVisitRequest(BaseModel):
     disease_type: Optional[str] = "default"
 
     followup_channel: Optional[str] = "WHATSAPP"
+
+
+# =====================================================
+# COMPATIBILITY ALIASES
+# =====================================================
+
+VitalsInput = VitalsCreate
+
+HomeopathyCaseInput = HomeopathyCaseCreate
