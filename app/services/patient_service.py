@@ -14,17 +14,11 @@ logger = logging.getLogger(__name__)
 # =====================================================
 
 def get_next_reg_no(db: Session, clinic_id: str) -> int:
-    """
-    Race-condition-safe reg_no using DB-level locking.
-    Two receptionists registering simultaneously
-    will get sequential numbers, never duplicates.
-    """
     result = db.execute(
         text("""
-            SELECT COALESCE(MAX(reg_no), 0) + 1
+            SELECT COALESCE(MAX(reg_no), 1000) + 1
             FROM patients
             WHERE clinic_id = :clinic_id
-            FOR UPDATE
         """),
         {"clinic_id": clinic_id}
     ).scalar()
