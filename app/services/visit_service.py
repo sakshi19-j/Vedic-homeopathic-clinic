@@ -184,78 +184,67 @@ def get_visit_wizard_state(
         )
     }
 
-
-# =====================================================
-# CLOSE VISIT
-# =====================================================
-
 def close_visit(
     db: Session,
-    visit_id: str,
     clinic_id: str,
-    data: CloseVisitRequest
+    visit_id: str,
+    data: CloseVisitInput
 ):
 
     visit = _get_visit(
-        db=db,
-        visit_id=visit_id,
-        clinic_id=clinic_id
+        db,
+        clinic_id,
+        visit_id
     )
 
-    # ---------------------------------------------
+    # =====================================================
     # UPDATE VISIT
-    # ---------------------------------------------
+    # =====================================================
 
     visit.fee = data.fee
-
-    visit.disease_type = data.disease_type
-
-    visit.visit_status = VisitStatus.COMPLETED
-
+    visit.payment_mode = data.payment_mode
     visit.payment_status = PaymentStatus.PAID
-
-    if data.payment_mode:
-
-        try:
-            visit.payment_mode = PaymentMode(
-                data.payment_mode
-            )
-
-        except Exception:
-            visit.payment_mode = PaymentMode.CASH
-
+    visit.visit_status = VisitStatus.COMPLETED
     visit.closed_at = datetime.utcnow()
 
-    # ---------------------------------------------
-    # CREATE PAYMENT
-    # ---------------------------------------------
+    # =====================================================
+    # FIND EXISTING PAYMENT
+    # =====================================================
 
-    existing_payment = db.query(Payment).filter(
+    payment = db.query(Payment).filter(
         Payment.visit_id == visit.id
     ).first()
 
-    if not existing_payment:
+    # =====================================================
+    # CREATE PAYMENT IF NOT EXISTS
+    # =====================================================
+
+    if not payment:
 
         payment = Payment(
             visit_id=visit.id,
-            amount=data.fee
+            clinic_id=visit.clinic_id,   # ✅ FIXED
+            amount=data.fee,
+            payment_mode=data.payment_mode
         )
 
         db.add(payment)
 
+    else:
+
+        payment.clinic_id = visit.clinic_id
+        payment.amount = data.fee
+        payment.payment_mode = data.payment_mode
+
+    # =====================================================
+    # SAVE
+    # =====================================================
+
     db.commit()
-
     db.refresh(visit)
-
-    # ---------------------------------------------
-    # RESPONSE
-    # ---------------------------------------------
 
     return {
         "success": True,
         "message": "Visit closed successfully",
-        "visit_id": visit.id,
-        "status": visit.visit_status.value,
-        "payment_status": visit.payment_status.value,
-        "closed_at": visit.closed_at
+        "visit_id": visit.id
     }
