@@ -145,3 +145,17 @@ VitalsInput = VitalsCreate
 
 HomeopathyCaseInput = HomeopathyCaseCreate
 HomeopathyInput = HomeopathyCaseCreate
+
+# =====================================================
+# COMPATIBILITY ALIASES
+# =====================================================
+
+VitalsInput = VitalsCreate
+
+AllopathyInput = AllopathyRxCreate
+
+HomeopathyCaseInput = HomeopathyCaseCreate
+
+HomeopathyInput = HomeopathyCaseCreate
+
+CloseVisitInput = CloseVisitRequest
