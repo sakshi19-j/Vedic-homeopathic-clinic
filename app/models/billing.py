@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey
 )
 
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.models.base import BaseModel
@@ -52,4 +53,10 @@ class Payment(BaseModel):
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
+    )
+
+    # RELATIONSHIP
+    visit = relationship(
+        "Visit",
+        back_populates="payments"
     )

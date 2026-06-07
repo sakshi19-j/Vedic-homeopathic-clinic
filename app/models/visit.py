@@ -13,7 +13,6 @@ from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
 from datetime import datetime
-
 import enum
 
 
@@ -23,16 +22,16 @@ import enum
 
 class VisitType(str, enum.Enum):
 
-    ALLOPATHY  = "ALLOPATHY"
+    ALLOPATHY = "ALLOPATHY"
     HOMEOPATHY = "HOMEOPATHY"
-    AYURVEDIC  = "AYURVEDIC"
+    AYURVEDIC = "AYURVEDIC"
 
 
 class VisitStatus(str, enum.Enum):
 
-    DRAFT     = "DRAFT"
-    ACTIVE    = "ACTIVE"
-    BILLING   = "BILLING"
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    BILLING = "BILLING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
 
@@ -40,16 +39,16 @@ class VisitStatus(str, enum.Enum):
 class PaymentStatus(str, enum.Enum):
 
     PENDING = "PENDING"
-    PAID    = "PAID"
-    WAIVED  = "WAIVED"
+    PAID = "PAID"
+    WAIVED = "WAIVED"
 
 
 class PaymentMode(str, enum.Enum):
 
-    CASH   = "CASH"
-    UPI    = "UPI"
+    CASH = "CASH"
+    UPI = "UPI"
     ONLINE = "ONLINE"
-    CARD   = "CARD"
+    CARD = "CARD"
 
 
 # =====================================================
@@ -157,7 +156,7 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    # ✅ ADDED — prescription PDF URL
+    # Prescription PDF URL
     prescription_url = Column(
         String,
         nullable=True
@@ -195,10 +194,11 @@ class Visit(BaseModel):
         uselist=False
     )
 
-    payment = relationship(
+    # ✅ FIXED HERE
+    payments = relationship(
         "Payment",
         back_populates="visit",
-        uselist=False
+        cascade="all, delete-orphan"
     )
 
     follow_ups = relationship(
@@ -221,7 +221,6 @@ class AllopathyRx(BaseModel):
         unique=True
     )
 
-    # Stored as JSON string
     medicines = Column(
         String,
         nullable=True
@@ -257,10 +256,6 @@ class HomeopathyCase(BaseModel):
         unique=True
     )
 
-    # -------------------------------------------------
-    # CASE HISTORY
-    # -------------------------------------------------
-
     chief_complaint = Column(
         String,
         nullable=True
@@ -285,10 +280,6 @@ class HomeopathyCase(BaseModel):
         String,
         nullable=True
     )
-
-    # -------------------------------------------------
-    # HOMEOPATHY GENERALS
-    # -------------------------------------------------
 
     thermal_sensation = Column(
         String,
@@ -325,10 +316,6 @@ class HomeopathyCase(BaseModel):
         nullable=True
     )
 
-    # -------------------------------------------------
-    # PARTICULARS + RUBRICS
-    # -------------------------------------------------
-
     particulars = Column(
         String,
         nullable=True
@@ -338,10 +325,6 @@ class HomeopathyCase(BaseModel):
         String,
         nullable=True
     )
-
-    # -------------------------------------------------
-    # REMEDY
-    # -------------------------------------------------
 
     remedy = Column(
         String,
