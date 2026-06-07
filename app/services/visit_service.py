@@ -110,17 +110,17 @@ def create_visit(
     )
 
     visit = Visit(
-        clinic_id       = clinic_id,
-        patient_id      = data.patient_id,
-        doctor_id       = doctor_id,
-        type            = visit_type,
-        visit_status    = "DRAFT",
-        chief_complaint = data.chief_complaint,
-        disease_type    = data.disease_type or "default",
-        fee             = data.fee or 0,
-        notes           = data.notes,
-        episode_id      = data.episode_id,
-        visit_date      = datetime.now(IST)
+        clinic_id=clinic_id,
+        patient_id=data.patient_id,
+        doctor_id=doctor_id,
+        type=visit_type,
+        visit_status="DRAFT",
+        chief_complaint=data.chief_complaint,
+        disease_type=data.disease_type or "default",
+        fee=data.fee or 0,
+        notes=data.notes,
+        episode_id=data.episode_id,
+        visit_date=datetime.now(IST)
     )
 
     db.add(visit)
@@ -396,7 +396,8 @@ def close_visit(
     payment = Payment(
         visit_id=visit.id,
         clinic_id=visit.clinic_id,
-        amount=data.fee
+        amount=data.fee,
+        payment_method=data.payment_mode
     )
 
     db.add(payment)
