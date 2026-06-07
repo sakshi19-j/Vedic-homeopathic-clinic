@@ -362,3 +362,212 @@ def block_receptionist_from_revenue(
 check_subscription = (
     check_subscription_with_grace
 )
+
+# =====================================================
+# PLAN GATING
+# =====================================================
+
+PLAN_ORDER = {
+    "trial": 0,
+    "starter": 1,
+    "growth": 2,
+    "clinicpro": 3
+}
+
+
+def require_plan(minimum_plan: str):
+
+    def checker(
+        current_user: CurrentUser = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> CurrentUser:
+
+        clinic = db.query(Clinic).filter(
+            Clinic.id == current_user.clinic_id
+        ).first()
+
+        if not clinic:
+            raise HTTPException(
+                status_code=403,
+                detail="Clinic not found"
+            )
+
+        current_plan = (
+            clinic.subscription_plan or "trial"
+        ).lower()
+
+        required_plan = (
+            minimum_plan.lower()
+        )
+
+        if (
+            PLAN_ORDER.get(current_plan, 0)
+            < PLAN_ORDER.get(required_plan, 1)
+        ):
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "message":
+                        f"Requires "
+                        f"{minimum_plan.title()} "
+                        f"plan or above.",
+                    "code":
+                        "PLAN_UPGRADE_REQUIRED",
+                    "current_plan":
+                        current_plan,
+                    "required_plan":
+                        required_plan,
+                    "upgrade_url":
+                        "/settings/subscription"
+                }
+            )
+
+        return current_user
+
+    return checker
+
+
+# =====================================================
+# PATIENT LIMIT ENFORCER
+# =====================================================
+
+def check_patient_limit(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> CurrentUser:
+
+    from app.models.patient import Patient
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
+
+    if not clinic:
+        return current_user
+
+    limit = (
+        clinic.max_patients_per_month or -1
+    )
+
+    if limit == -1:
+        return current_user
+
+    now = datetime.now(IST)
+
+    month_start = now.replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    month_start_naive = (
+        month_start.replace(tzinfo=None)
+    )
+
+    count = db.query(Patient).filter(
+        Patient.clinic_id ==
+            current_user.clinic_id,
+        Patient.created_at >=
+            month_start_naive,
+        Patient.is_active == True
+    ).count()
+
+    if count >= limit:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "message":
+                    f"Monthly patient limit "
+                    f"reached ({limit}/month).",
+                "code":
+                    "PATIENT_LIMIT_REACHED",
+                "used":
+                    count,
+                "limit":
+                    limit,
+                "upgrade_url":
+                    "/settings/subscription"
+            }
+        )
+
+    return current_user
+
+
+# =====================================================
+# STAFF LIMIT ENFORCER
+# =====================================================
+
+def check_staff_limit(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> CurrentUser:
+
+    from sqlalchemy import text
+
+    clinic = db.query(Clinic).filter(
+        Clinic.id == current_user.clinic_id
+    ).first()
+
+    if not clinic:
+        return current_user
+
+    max_staff = (
+        clinic.max_staff
+        if clinic.max_staff is not None
+        else 0
+    )
+
+    if max_staff == -1:
+        return current_user
+
+    if max_staff == 0:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "message":
+                    "Staff accounts require "
+                    "Growth plan or above.",
+                "code":
+                    "STAFF_NOT_ALLOWED",
+                "upgrade_url":
+                    "/settings/subscription"
+            }
+        )
+
+    count = db.execute(
+        text(
+            """
+            SELECT COUNT(*)
+            FROM public.user_roles
+            WHERE clinic_id = :cid
+            AND role = 'reception'
+            AND is_active = true
+            """
+        ),
+        {
+            "cid":
+                current_user.clinic_id
+        }
+    ).scalar()
+
+    if count >= max_staff:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "message":
+                    f"Staff limit reached "
+                    f"({max_staff}).",
+                "code":
+                    "STAFF_LIMIT_REACHED",
+                "used":
+                    count,
+                "limit":
+                    max_staff,
+                "upgrade_url":
+                    "/settings/subscription"
+            }
+        )
+
+    return current_user
