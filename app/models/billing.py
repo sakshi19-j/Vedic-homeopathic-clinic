@@ -1,47 +1,62 @@
-from sqlalchemy import (
-    Column,
-    String,
-    Numeric,
-    ForeignKey
-)
+from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
 
-from sqlalchemy.orm import relationship
-
-from app.models.base import BaseModel
+from app.database import Base
 
 
-class Payment(BaseModel):
+class Payment(Base):
 
     __tablename__ = "payments"
 
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+
     visit_id = Column(
-        String,
+        UUID(as_uuid=True),
         ForeignKey("visits.id"),
-        nullable=False,
-        unique=True
+        nullable=False
     )
 
     clinic_id = Column(
-        String,
-        nullable=False,
-        index=True
+        UUID(as_uuid=True),
+        ForeignKey("clinics.id"),
+        nullable=False
     )
 
     amount = Column(
         Numeric(10, 2),
-        default=0
+        nullable=False
     )
 
+    # ✅ IMPORTANT FIX
     payment_mode = Column(
+        "mode",
+        String,
+        nullable=False
+    )
+
+    reference_no = Column(
         String,
         nullable=True
     )
 
-    # =====================================================
-    # RELATIONSHIP
-    # =====================================================
+    notes = Column(
+        Text,
+        nullable=True
+    )
 
-    visit = relationship(
-        "Visit",
-        back_populates="payments"
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
     )
