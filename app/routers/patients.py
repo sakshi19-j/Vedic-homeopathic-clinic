@@ -48,6 +48,14 @@ def create_patient(
     )
 
     # ─────────────────────────────────────────────
+    # REFRESH OBJECT SAFELY
+    # ─────────────────────────────────────────────
+    try:
+        db.refresh(patient)
+    except Exception:
+        pass
+
+    # ─────────────────────────────────────────────
     # AUDIT LOG (NON-CRITICAL)
     # ─────────────────────────────────────────────
     try:
@@ -71,9 +79,7 @@ def create_patient(
         )
 
     full = (
-        f"{patient.title or ''} "
         f"{patient.first_name} "
-        f"{patient.middle_name or ''} "
         f"{patient.last_name or ''}"
     ).strip()
 
