@@ -207,17 +207,57 @@ def get_patient(
         current_user.clinic_id
     )
 
-    full = (
-        f"{patient.title or ''} "
-        f"{patient.first_name} "
-        f"{patient.middle_name or ''} "
-        f"{patient.last_name or ''}"
-    ).strip()
-
-    response = PatientResponse.model_validate(patient)
-    response.full_name = full
-
-    return response
+    return {
+        "id": str(patient.id),
+        "reg_no": patient.reg_no,
+        "title": patient.title,
+        "first_name": patient.first_name,
+        "middle_name": patient.middle_name,
+        "last_name": patient.last_name,
+        "full_name": (
+            f"{patient.first_name} "
+            f"{patient.last_name or ''}"
+        ).strip(),
+        "dob": (
+            str(patient.dob)
+            if patient.dob
+            else None
+        ),
+        "age": patient.age,
+        "gender": patient.gender,
+        "marital_status": patient.marital_status,
+        "res_address": patient.res_address,
+        "res_city": patient.res_city,
+        "res_state": patient.res_state,
+        "res_postal": patient.res_postal,
+        "res_country": patient.res_country,
+        "phone_mobile": patient.phone_mobile,
+        "phone_res": patient.phone_res,
+        "email": patient.email,
+        "referred_by_name": patient.referred_by_name,
+        "referred_by_contact": patient.referred_by_contact,
+        "language_pref": (
+            patient.language_pref or "en"
+        ),
+        "patient_type": patient.patient_type,
+        "total_visits": (
+            patient.total_visits or 0
+        ),
+        "total_spent": float(
+            patient.total_spent or 0
+        ),
+        "patient_value_score": float(
+            patient.patient_value_score or 0
+        ),
+        "is_missed": (
+            patient.is_missed or False
+        ),
+        "last_visit_date": (
+            str(patient.last_visit_date)
+            if patient.last_visit_date
+            else None
+        ),
+    }
 
 
 # =====================================================
@@ -240,7 +280,57 @@ def update_patient(
         data
     )
 
-    return PatientResponse.model_validate(patient)
+    return {
+        "id": str(patient.id),
+        "reg_no": patient.reg_no,
+        "title": patient.title,
+        "first_name": patient.first_name,
+        "middle_name": patient.middle_name,
+        "last_name": patient.last_name,
+        "full_name": (
+            f"{patient.first_name} "
+            f"{patient.last_name or ''}"
+        ).strip(),
+        "dob": (
+            str(patient.dob)
+            if patient.dob
+            else None
+        ),
+        "age": patient.age,
+        "gender": patient.gender,
+        "marital_status": patient.marital_status,
+        "res_address": patient.res_address,
+        "res_city": patient.res_city,
+        "res_state": patient.res_state,
+        "res_postal": patient.res_postal,
+        "res_country": patient.res_country,
+        "phone_mobile": patient.phone_mobile,
+        "phone_res": patient.phone_res,
+        "email": patient.email,
+        "referred_by_name": patient.referred_by_name,
+        "referred_by_contact": patient.referred_by_contact,
+        "language_pref": (
+            patient.language_pref or "en"
+        ),
+        "patient_type": patient.patient_type,
+        "total_visits": (
+            patient.total_visits or 0
+        ),
+        "total_spent": float(
+            patient.total_spent or 0
+        ),
+        "patient_value_score": float(
+            patient.patient_value_score or 0
+        ),
+        "is_missed": (
+            patient.is_missed or False
+        ),
+        "last_visit_date": (
+            str(patient.last_visit_date)
+            if patient.last_visit_date
+            else None
+        ),
+    }
 
 
 # =====================================================
