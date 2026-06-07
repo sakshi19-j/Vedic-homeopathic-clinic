@@ -23,6 +23,8 @@ from app.schemas.visit import (
     VisitCreate,
     VitalsInput,
 )
+from fastapi import HTTPException
+
 from app.services.growth_service import update_patient_stats
 
 logger = logging.getLogger(__name__)
@@ -504,3 +506,48 @@ def _get_visit(
         )
 
     return visit
+
+def get_visit(
+    db,
+    visit_id: str,
+    clinic_id: str
+):
+    from app.models.visit import Visit
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == clinic_id
+    ).first()
+
+    if not visit:
+        raise HTTPException(
+            status_code=404,
+            detail="Visit not found"
+        )
+
+    return {
+        "id": str(visit.id),
+        "patient_id": str(visit.patient_id),
+        "clinic_id": str(visit.clinic_id),
+        "type": visit.type,
+        "status": visit.status,
+        "chief_complaint": visit.chief_complaint,
+        "disease_type": visit.disease_type,
+        "fee": float(visit.fee or 0),
+        "notes": visit.notes,
+        "episode_id": (
+            str(visit.episode_id)
+            if visit.episode_id
+            else None
+        ),
+        "created_at": (
+            str(visit.created_at)
+            if visit.created_at
+            else None
+        ),
+        "closed_at": (
+            str(visit.closed_at)
+            if visit.closed_at
+            else None
+        ),
+    }
