@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Union
 
 from supabase import create_client
 
@@ -11,9 +12,7 @@ from app.config import settings
 # =====================================================
 
 client = create_client(
-
     settings.SUPABASE_URL,
-
     settings.SUPABASE_KEY
 )
 
@@ -23,7 +22,7 @@ client = create_client(
 # =====================================================
 
 def upload_pdf(
-    local_path: str,
+    local_path: Union[str, bytes],
     folder: str = "receipts"
 ) -> str:
 
@@ -32,23 +31,35 @@ def upload_pdf(
     # =================================================
 
     filename = (
-
         f"{folder}_"
         f"{uuid.uuid4().hex[:8]}.pdf"
     )
 
     storage_path = (
-
         f"{folder}/{filename}"
     )
 
     # =================================================
-    # READ FILE
+    # HANDLE BYTES OR FILE PATH
     # =================================================
 
-    with open(local_path, "rb") as f:
+    if isinstance(local_path, bytes):
 
-        file_data = f.read()
+        file_data = local_path
+
+    else:
+
+        with open(local_path, "rb") as f:
+
+            file_data = f.read()
+
+        # =============================================
+        # DELETE LOCAL TEMP FILE
+        # =============================================
+
+        if os.path.exists(local_path):
+
+            os.remove(local_path)
 
     # =================================================
     # UPLOAD TO SUPABASE STORAGE
@@ -65,8 +76,7 @@ def upload_pdf(
         file=file_data,
 
         file_options={
-            "content-type":
-                "application/pdf"
+            "content-type": "application/pdf"
         }
     )
 
@@ -85,18 +95,8 @@ def upload_pdf(
         60 * 60 * 24
     )
 
-    pdf_url = signed["signedURL"]
-
-    # =================================================
-    # DELETE LOCAL TEMP FILE
-    # =================================================
-
-    if os.path.exists(local_path):
-
-        os.remove(local_path)
-
     # =================================================
     # RETURN SIGNED URL
     # =================================================
 
-    return pdf_url
+    return signed["signedURL"]
