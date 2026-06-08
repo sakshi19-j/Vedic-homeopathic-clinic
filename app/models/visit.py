@@ -197,7 +197,7 @@ class Visit(BaseModel):
     payments = relationship(
         "Payment",
         back_populates="visit",
-        uselist=False
+        cascade="all, delete-orphan"
     )
 
     follow_ups = relationship(

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, DateTime, Numeric, ForeignKey, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.models.base import Base
@@ -29,7 +30,6 @@ class Payment(Base):
         default=0
     )
 
-    # DB column name = mode
     payment_mode = Column(
         "mode",
         String,
@@ -55,4 +55,10 @@ class Payment(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now()
+    )
+
+    # FIX
+    visit = relationship(
+        "Visit",
+        back_populates="payments"
     )
