@@ -114,7 +114,7 @@ async def send_prescription_whatsapp(
 ):
 
     # =====================================================
-    # GENERATE PDF
+    # GENERATE PRESCRIPTION
     # =====================================================
 
     result = generate_prescription(
@@ -184,45 +184,21 @@ async def send_prescription_whatsapp(
         )
 
     # =====================================================
-    # VALIDATE PHONE
+    # CHECK MOBILE
     # =====================================================
 
-    if not getattr(patient, "phone_mobile", None):
+    if not patient.phone_mobile:
 
         raise HTTPException(
 
             status_code=400,
 
-            detail="Patient has no mobile number"
+            detail="Patient mobile number missing"
         )
-
-    # =====================================================
-    # OPT OUT CHECK
-    # =====================================================
-
-    if getattr(patient, "whatsapp_opted_out", False):
-
-        return {
-
-            "success": False,
-
-            "message": "Patient opted out of WhatsApp",
-
-            "patient": (
-                f"{patient.first_name} "
-                f"{patient.last_name or ''}"
-            ).strip()
-        }
 
     # =====================================================
     # BUILD MESSAGE
     # =====================================================
-
-    clinic_name = clinic.name or "Clinic"
-
-    doctor_name = clinic.doctor_name or "Doctor"
-
-    clinic_phone = clinic.phone or ""
 
     patient_name = (
 
@@ -233,22 +209,24 @@ async def send_prescription_whatsapp(
 
     message = (
 
-        f"Dear {patient_name},\n\n"
+        f"Hi {patient_name},\n\n"
 
         f"Your prescription from "
-        f"{clinic_name} is ready.\n\n"
+        f"Dr. {clinic.doctor_name} "
+        f"is ready.\n\n"
 
-        f"Doctor: Dr. {doctor_name}\n\n"
-
-        f"Prescription PDF:\n"
+        f"📄 Prescription PDF:\n"
 
         f"{result['pdf_url']}\n\n"
 
-        f"For assistance call:\n"
+        f"Please save this PDF "
+        f"for future reference.\n\n"
 
-        f"{clinic_phone}\n\n"
+        f"For help contact:\n"
 
-        f"- Powered by Vennova"
+        f"{clinic.phone}\n\n"
+
+        f"- Team Vennova"
     )
 
     # =====================================================
@@ -282,7 +260,7 @@ async def send_prescription_whatsapp(
         }
 
     # =====================================================
-    # FINAL RESPONSE
+    # RESPONSE
     # =====================================================
 
     return {
@@ -291,34 +269,22 @@ async def send_prescription_whatsapp(
 
             whatsapp_result.get("status")
 
-            in ["sent", "mocked"]
-
+            == "sent"
         ),
 
         "message": (
 
-            "Prescription sent successfully"
-
-            if whatsapp_result.get("status")
-
-            in ["sent", "mocked"]
-
-            else "Prescription send failed"
+            f"Prescription sent to "
+            f"{patient_name}"
         ),
 
-        "pdf_url":
+        "pdf_url": (
 
-            result.get("pdf_url"),
+            result.get("pdf_url")
+        ),
 
-        "patient":
-
-            patient_name,
-
-        "visit_type":
-
-            result.get("visit_type"),
-
-        "whatsapp":
+        "whatsapp": (
 
             whatsapp_result
+        )
     }
