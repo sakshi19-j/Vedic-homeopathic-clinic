@@ -199,7 +199,7 @@ def get_billing_history(
                 if p.payment_mode else None
             ),
 
-            "receipt_url": p.receipt_url,
+            "receipt_url": getattr(p, 'receipt_url', None),
 
             "date": (
                 p.created_at.strftime("%d-%m-%Y")
