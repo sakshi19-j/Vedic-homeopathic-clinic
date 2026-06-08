@@ -113,6 +113,10 @@ async def send_prescription_whatsapp(
     )
 ):
 
+    # =====================================================
+    # GENERATE PDF
+    # =====================================================
+
     result = generate_prescription(
 
         db,
@@ -121,6 +125,10 @@ async def send_prescription_whatsapp(
 
         current_user.clinic_id
     )
+
+    # =====================================================
+    # FETCH VISIT
+    # =====================================================
 
     visit = db.query(Visit).filter(
 
@@ -137,11 +145,28 @@ async def send_prescription_whatsapp(
             detail="Visit not found"
         )
 
+    # =====================================================
+    # FETCH PATIENT
+    # =====================================================
+
     patient = db.query(Patient).filter(
 
         Patient.id == visit.patient_id
 
     ).first()
+
+    if not patient:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Patient not found"
+        )
+
+    # =====================================================
+    # FETCH CLINIC
+    # =====================================================
 
     clinic = db.query(Clinic).filter(
 
@@ -149,107 +174,151 @@ async def send_prescription_whatsapp(
 
     ).first()
 
-    whatsapp_result = None
+    if not clinic:
 
-    if patient and getattr(
-        patient,
-        "phone_mobile",
-        None
-    ):
+        raise HTTPException(
 
-        clinic_name = (
+            status_code=404,
 
-            clinic.name
-
-            if clinic
-
-            else "Clinic"
+            detail="Clinic not found"
         )
 
-        doctor_name = (
+    # =====================================================
+    # VALIDATE PHONE
+    # =====================================================
 
-            clinic.doctor_name
+    if not getattr(patient, "phone_mobile", None):
 
-            if clinic
+        raise HTTPException(
 
-            else "Doctor"
+            status_code=400,
+
+            detail="Patient has no mobile number"
         )
 
-        clinic_phone = (
+    # =====================================================
+    # OPT OUT CHECK
+    # =====================================================
 
-            clinic.phone
+    if getattr(patient, "whatsapp_opted_out", False):
 
-            if clinic
+        return {
 
-            else ""
+            "success": False,
+
+            "message": "Patient opted out of WhatsApp",
+
+            "patient": (
+                f"{patient.first_name} "
+                f"{patient.last_name or ''}"
+            ).strip()
+        }
+
+    # =====================================================
+    # BUILD MESSAGE
+    # =====================================================
+
+    clinic_name = clinic.name or "Clinic"
+
+    doctor_name = clinic.doctor_name or "Doctor"
+
+    clinic_phone = clinic.phone or ""
+
+    patient_name = (
+
+        f"{patient.first_name} "
+        f"{patient.last_name or ''}"
+
+    ).strip()
+
+    message = (
+
+        f"Dear {patient_name},\n\n"
+
+        f"Your prescription from "
+        f"{clinic_name} is ready.\n\n"
+
+        f"Doctor: Dr. {doctor_name}\n\n"
+
+        f"Prescription PDF:\n"
+
+        f"{result['pdf_url']}\n\n"
+
+        f"For assistance call:\n"
+
+        f"{clinic_phone}\n\n"
+
+        f"- Powered by Vennova"
+    )
+
+    # =====================================================
+    # SEND WHATSAPP
+    # =====================================================
+
+    try:
+
+        whatsapp_result = await send_text_message(
+
+            phone=patient.phone_mobile,
+
+            message=message,
+
+            db=db,
+
+            clinic_id=str(current_user.clinic_id),
+
+            patient_id=str(patient.id),
+
+            trigger="prescription_send"
         )
 
-        patient_name = (
+    except Exception as e:
 
-            patient.first_name
+        whatsapp_result = {
 
-            if getattr(
-                patient,
-                "first_name",
-                None
-            )
+            "status": "failed",
 
-            else "Patient"
-        )
+            "error": str(e)
+        }
 
-        message = (
-
-            f"Dear {patient_name}, "
-
-            f"your prescription from "
-
-            f"{clinic_name} is ready.\n\n"
-
-            f"Doctor: Dr. {doctor_name}\n\n"
-
-            f"Prescription PDF:\n"
-
-            f"{result['pdf_url']}\n\n"
-
-            f"For assistance call:\n"
-
-            f"{clinic_phone}\n\n"
-
-            f"- Powered by Vennova"
-        )
-
-        try:
-
-            whatsapp_result = await send_text_message(
-
-                patient.phone_mobile,
-
-                message
-            )
-
-        except Exception as e:
-
-            whatsapp_result = {
-
-                "success": False,
-
-                "error": str(e)
-            }
+    # =====================================================
+    # FINAL RESPONSE
+    # =====================================================
 
     return {
 
-        "message":
-            "Prescription generated successfully",
+        "success": (
+
+            whatsapp_result.get("status")
+
+            in ["sent", "mocked"]
+
+        ),
+
+        "message": (
+
+            "Prescription sent successfully"
+
+            if whatsapp_result.get("status")
+
+            in ["sent", "mocked"]
+
+            else "Prescription send failed"
+        ),
 
         "pdf_url":
+
             result.get("pdf_url"),
 
         "patient":
-            result.get("patient"),
+
+            patient_name,
 
         "visit_type":
+
             result.get("visit_type"),
 
         "whatsapp":
+
             whatsapp_result
     }
