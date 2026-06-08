@@ -60,10 +60,6 @@ class Visit(BaseModel):
 
     __tablename__ = "visits"
 
-    # -------------------------------------------------
-    # BASIC
-    # -------------------------------------------------
-
     clinic_id = Column(
         String,
         nullable=False,
@@ -87,18 +83,10 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    # -------------------------------------------------
-    # VISIT TYPE
-    # -------------------------------------------------
-
     type = Column(
         SQLEnum(VisitType),
         nullable=False
     )
-
-    # -------------------------------------------------
-    # VISIT STATUS
-    # -------------------------------------------------
 
     visit_status = Column(
         SQLEnum(VisitStatus),
@@ -106,10 +94,6 @@ class Visit(BaseModel):
         nullable=False,
         index=True
     )
-
-    # -------------------------------------------------
-    # VISIT DETAILS
-    # -------------------------------------------------
 
     disease_type = Column(
         String,
@@ -161,10 +145,6 @@ class Visit(BaseModel):
         nullable=True
     )
 
-    # =====================================================
-    # RELATIONSHIPS
-    # =====================================================
-
     patient = relationship(
         "Patient",
         back_populates="visits"
@@ -193,7 +173,6 @@ class Visit(BaseModel):
         uselist=False
     )
 
-    # ✅ FIXED PAYMENT RELATION
     payments = relationship(
         "Payment",
         back_populates="visit",
@@ -256,6 +235,7 @@ class HomeopathyCase(BaseModel):
     )
 
     chief_complaint = Column(String, nullable=True)
+
     history_present = Column(String, nullable=True)
     history_past = Column(String, nullable=True)
     history_surgical = Column(String, nullable=True)
@@ -270,12 +250,20 @@ class HomeopathyCase(BaseModel):
     mind_symptoms = Column(String, nullable=True)
 
     particulars = Column(String, nullable=True)
+
     rubrics = Column(String, nullable=True)
 
+    # INTERNAL ONLY
     remedy = Column(String, nullable=True)
     potency = Column(String, nullable=True)
     repetition = Column(String, nullable=True)
     miasm = Column(String, nullable=True)
+
+    # SAFE PATIENT VIEW
+    patient_rx = Column(
+        String,
+        nullable=True
+    )
 
     visit = relationship(
         "Visit",

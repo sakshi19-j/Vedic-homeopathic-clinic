@@ -56,9 +56,23 @@ class RubricInput(BaseModel):
     chapter: Optional[str] = None
 
 
+class PatientMedicineBox(BaseModel):
+
+    box_name: str
+    timing: str
+    duration: str
+    instruction: Optional[str] = None
+
+
 class HomeopathyCaseCreate(BaseModel):
 
     chief_complaint: Optional[str] = None
+
+    # SAFE PATIENT VIEW
+    # Example:
+    # Box 1 → before breakfast
+    # Box 2 → after dinner
+    patient_rx: Optional[str] = None
 
     history_present: Optional[str] = None
     history_past: Optional[str] = None
@@ -77,6 +91,7 @@ class HomeopathyCaseCreate(BaseModel):
 
     rubrics: Optional[List[RubricInput]] = None
 
+    # INTERNAL ONLY
     remedy: Optional[str] = None
     potency: Optional[str] = None
     repetition: Optional[str] = None
