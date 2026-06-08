@@ -27,25 +27,36 @@ def upload_pdf(
     folder: str = "receipts"
 ) -> str:
 
-    # Generate unique filename
+    # =================================================
+    # GENERATE UNIQUE FILENAME
+    # =================================================
+
     filename = (
+
         f"{folder}_"
         f"{uuid.uuid4().hex[:8]}.pdf"
     )
 
     storage_path = (
+
         f"{folder}/{filename}"
     )
 
-    # Read file
+    # =================================================
+    # READ FILE
+    # =================================================
+
     with open(local_path, "rb") as f:
 
         file_data = f.read()
 
-    # Upload to Supabase Storage
+    # =================================================
+    # UPLOAD TO SUPABASE STORAGE
+    # =================================================
+
     client.storage.from_(
 
-        "clinic-files"
+        "prescriptions-private"
 
     ).upload(
 
@@ -59,16 +70,33 @@ def upload_pdf(
         }
     )
 
-    # Generate public URL
-    public_url = client.storage.from_(
+    # =================================================
+    # CREATE 24H SIGNED URL
+    # =================================================
 
-        "clinic-files"
+    signed = client.storage.from_(
 
-    ).get_public_url(storage_path)
+        "prescriptions-private"
 
-    # Delete local temp file
+    ).create_signed_url(
+
+        storage_path,
+
+        60 * 60 * 24
+    )
+
+    pdf_url = signed["signedURL"]
+
+    # =================================================
+    # DELETE LOCAL TEMP FILE
+    # =================================================
+
     if os.path.exists(local_path):
 
         os.remove(local_path)
 
-    return public_url
+    # =================================================
+    # RETURN SIGNED URL
+    # =================================================
+
+    return pdf_url

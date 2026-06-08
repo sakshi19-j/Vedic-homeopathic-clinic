@@ -4,7 +4,9 @@ import json
 import io
 import logging
 import tempfile
+import qrcode
 
+from io import BytesIO
 from datetime import datetime
 
 from reportlab.lib.pagesizes import A5, A4
@@ -17,7 +19,8 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    HRFlowable
+    HRFlowable,
+    Image
 )
 
 from reportlab.lib.styles import (
@@ -458,6 +461,28 @@ def generate_prescription_pdf(
     W, H = A4
 
     # =================================================
+    # QR CODE GENERATION
+    # =================================================
+
+    qr_url = (
+        f"https://rx.vennovahealth.com/rx/"
+        f"{visit.get('token')}"
+    )
+
+    qr = qrcode.make(qr_url)
+
+    buffer = BytesIO()
+
+    qr.save(buffer)
+
+    buffer.seek(0)
+
+    qr_image = Image(buffer)
+
+    qr_image.width = 100
+    qr_image.height = 100
+
+    # =================================================
     # THEME ENGINE
     # =================================================
 
@@ -601,6 +626,29 @@ def generate_prescription_pdf(
             "%d %b %Y"
         )
     )
+
+    # =================================================
+    # QR CODE DRAW
+    # =================================================
+
+    try:
+
+        c.drawImage(
+
+            ImageReader(buffer),
+
+            W - 45*mm,
+            H - 115*mm,
+
+            width=28*mm,
+            height=28*mm
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            f"QR draw error: {e}"
+        )
 
     # =================================================
     # RX SYMBOL
