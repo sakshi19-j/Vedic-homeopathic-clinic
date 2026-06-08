@@ -48,11 +48,7 @@ def get_payment(
         "visit_id": payment.visit_id,
         "amount": float(payment.amount),
 
-        "mode": (
-            payment.payment_mode.value
-            if payment.payment_mode
-            else None
-        ),
+        "mode": payment.payment_mode or None,
 
         "transaction_ref": payment.transaction_ref,
 
