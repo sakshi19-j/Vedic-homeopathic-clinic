@@ -195,7 +195,7 @@ def get_billing_history(
             "amount": float(p.amount),
 
             "mode": (
-                p.mode.value
+                p.payment_mode
                 if p.payment_mode else None
             ),
 
