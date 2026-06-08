@@ -400,7 +400,7 @@ def update_visit_status(
     db: Session,
     clinic_id: str,
     visit_id: str,
-    status: str
+    new_status: str
 ):
 
     visit = _get_visit(
@@ -426,7 +426,9 @@ def update_visit_status(
 
     try:
 
-        status_enum = VisitStatus(status)
+        status_enum = VisitStatus(
+            new_status
+        )
 
     except Exception:
 
@@ -448,7 +450,6 @@ def update_visit_status(
 
     visit.visit_status = status_enum
 
-    # Auto close time if completed
     if status_enum == VisitStatus.COMPLETED:
 
         visit.closed_at = datetime.utcnow()
