@@ -413,35 +413,17 @@ def update_visit_status(
     # VALIDATE STATUS
     # =====================================================
 
-    allowed_statuses = [
-
-        VisitStatus.WAITING,
-
-        VisitStatus.IN_PROGRESS,
-
-        VisitStatus.COMPLETED,
-
-        VisitStatus.CANCELLED
-    ]
-
     try:
 
-        status_enum = VisitStatus(
-            new_status
-        )
+        status_enum = VisitStatus[
+            new_status.upper()
+        ]
 
-    except Exception:
+    except KeyError:
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid visit status"
-        )
-
-    if status_enum not in allowed_statuses:
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Status not allowed"
         )
 
     # =====================================================
@@ -450,6 +432,7 @@ def update_visit_status(
 
     visit.visit_status = status_enum
 
+    # Auto close if completed
     if status_enum == VisitStatus.COMPLETED:
 
         visit.closed_at = datetime.utcnow()
