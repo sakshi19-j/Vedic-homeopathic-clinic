@@ -197,31 +197,46 @@ def generate_prescription(
     # VISIT DICT
     # ──────────────────────────────────────────────────
 
+    
     visit_dict = {
 
         "id": visit.id,
 
+        "token": visit.id,
+
+        "backend_url":
+            "https://natural-success-production.up.railway.app",
+
         "rx": rx_notes,
 
-        "notes": visit.notes or "",
+        "notes":
+            visit.notes or "",
 
         "chief_complaint":
             visit.chief_complaint or "",
 
-        "visit_type": visit_type,
+        "visit_type":
+            visit_type,
 
-        "diagnosis": diagnosis,
+        "diagnosis":
+            diagnosis,
 
-        "advice": advice,
+        "advice":
+            advice,
 
-        "next_visit_date": next_visit,
+        "next_visit_date":
+            next_visit,
 
-        "medicines": medicines_list,
+        "medicines":
+            medicines_list,
 
-        "homeopathy_case": homeopathy_case,
+        "homeopathy_case":
+            homeopathy_case,
 
-        "rubrics": rubrics,
+        "rubrics":
+            rubrics,
     }
+
 
     # ──────────────────────────────────────────────────
     # CLINIC DATA
