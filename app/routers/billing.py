@@ -196,7 +196,7 @@ def get_billing_history(
 
             "mode": (
                 p.mode.value
-                if p.mode else None
+                if p.payment_mode else None
             ),
 
             "receipt_url": p.receipt_url,
