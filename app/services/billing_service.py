@@ -219,7 +219,7 @@ def generate_receipt(
 
         payment_mode=(
 
-            visit.payment_mode.value
+            visit.payment_mode
 
             if visit.payment_mode
             else "CASH"
