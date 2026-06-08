@@ -29,9 +29,9 @@ def generate_prescription(
     clinic_id: str
 ) -> dict:
 
-    # ──────────────────────────────────────────────────
-    # FETCH RECORDS
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # FETCH VISIT
+    # =================================================
 
     visit = db.query(Visit).filter(
         Visit.id == visit_id,
@@ -39,7 +39,15 @@ def generate_prescription(
     ).first()
 
     if not visit:
-        raise HTTPException(404, "Visit not found")
+
+        raise HTTPException(
+            status_code=404,
+            detail="Visit not found"
+        )
+
+    # =================================================
+    # FETCH PATIENT
+    # =================================================
 
     patient = db.query(Patient).filter(
         Patient.id == visit.patient_id,
@@ -47,73 +55,111 @@ def generate_prescription(
     ).first()
 
     if not patient:
-        raise HTTPException(404, "Patient not found")
+
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found"
+        )
+
+    # =================================================
+    # FETCH CLINIC
+    # =================================================
 
     clinic = db.query(Clinic).filter(
         Clinic.id == clinic_id
     ).first()
 
     if not clinic:
-        raise HTTPException(404, "Clinic not found")
 
-    # ──────────────────────────────────────────────────
+        raise HTTPException(
+            status_code=404,
+            detail="Clinic not found"
+        )
+
+    # =================================================
+    # GENERATE TOKEN
+    # =================================================
+
+    if not visit.prescription_token:
+
+        visit.prescription_token = (
+            secrets.token_urlsafe(16)
+        )
+
+        db.commit()
+
+        db.refresh(visit)
+
+    # =================================================
     # VISIT TYPE
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     visit_type = (
+
         visit.type.value.upper()
+
         if hasattr(visit.type, "value")
+
         else str(visit.type).upper()
     )
 
-    if "." in visit_type:
-        visit_type = visit_type.split(".")[-1]
-
     rx_notes = ""
 
-    # ──────────────────────────────────────────────────
+    medicines_list = []
+
+    advice = ""
+
+    next_visit = ""
+
+    diagnosis = visit.diagnosis or ""
+
+    # =================================================
     # ALLOPATHY
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     if visit.allopathy_rx:
 
         rx = visit.allopathy_rx
 
-        medicines = []
-
         if rx.medicines:
 
             try:
-                medicines = json.loads(rx.medicines)
+
+                medicines_list = json.loads(
+                    rx.medicines
+                )
 
             except Exception:
-                medicines = []
 
-        for med in medicines:
+                medicines_list = []
+
+        for med in medicines_list:
 
             rx_notes += (
+
                 f"• {med.get('name', '')} | "
                 f"{med.get('dosage', '')} | "
                 f"{med.get('frequency', '')} | "
                 f"{med.get('duration', '')}\n"
             )
 
-        if rx.advice:
+        advice = rx.advice or ""
 
-            rx_notes += (
-                f"\nAdvice: {rx.advice}\n"
-            )
+        next_visit = (
 
-    # ──────────────────────────────────────────────────
+            rx.next_visit_date.strftime("%d %b %Y")
+
+            if rx.next_visit_date
+            else ""
+        )
+
+    # =================================================
     # HOMEOPATHY
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     elif visit.homeopathy_case:
 
         hc = visit.homeopathy_case
-
-        # SAFE PATIENT PRESCRIPTION
-        # DO NOT expose remedy names
 
         if hc.patient_rx:
 
@@ -126,9 +172,9 @@ def generate_prescription(
                 "by your doctor."
             )
 
-    # ──────────────────────────────────────────────────
-    # HOMEOPATHY CASE DATA
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # HOMEOPATHY CASE
+    # =================================================
 
     homeopathy_case = {}
 
@@ -138,76 +184,50 @@ def generate_prescription(
 
         hc = visit.homeopathy_case
 
-        # INTERNAL ONLY
-        # NOT SHOWN TO PATIENT PDF
-
         homeopathy_case = {
 
-            "remedy": hc.remedy or "",
+            "remedy":
+                hc.remedy or "",
 
-            "potency": hc.potency or "",
+            "potency":
+                hc.potency or "",
 
-            "repetition": hc.repetition or "",
+            "repetition":
+                hc.repetition or "",
 
-            "miasm": hc.miasm or "",
+            "miasm":
+                hc.miasm or "",
         }
 
         if hc.rubrics:
 
             try:
-                rubrics = json.loads(hc.rubrics)
 
-            except Exception:
-                rubrics = []
-
-    # ──────────────────────────────────────────────────
-    # ALLOPATHY TABLE DATA
-    # ──────────────────────────────────────────────────
-
-    medicines_list = []
-
-    advice = ""
-
-    next_visit = ""
-
-    diagnosis = ""
-
-    if visit.allopathy_rx:
-
-        rx = visit.allopathy_rx
-
-        if rx.medicines:
-
-            try:
-                medicines_list = json.loads(
-                    rx.medicines
+                rubrics = json.loads(
+                    hc.rubrics
                 )
 
             except Exception:
-                medicines_list = []
 
-        advice = rx.advice or ""
+                rubrics = []
 
-        next_visit = (
-            rx.next_visit_date.strftime("%d %b %Y")
-            if rx.next_visit_date else ""
-        )
-
-    # ──────────────────────────────────────────────────
+    # =================================================
     # VISIT DICT
-    # ──────────────────────────────────────────────────
+    # =================================================
 
-    
     visit_dict = {
 
-        "id": visit.id,
+        "id":
+            visit.id,
 
-        "token": visit.id,
+        "token":
+            visit.prescription_token,
 
         "backend_url":
             "https://natural-success-production.up.railway.app",
 
-        "rx": rx_notes,
+        "rx":
+            rx_notes,
 
         "notes":
             visit.notes or "",
@@ -237,14 +257,14 @@ def generate_prescription(
             rubrics,
     }
 
-
-    # ──────────────────────────────────────────────────
-    # CLINIC DATA
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # CLINIC DICT
+    # =================================================
 
     clinic_dict = {
 
-        "name": clinic.name,
+        "name":
+            clinic.name,
 
         "doctor_name":
             clinic.doctor_name,
@@ -266,27 +286,11 @@ def generate_prescription(
 
         "signature_url":
             getattr(clinic, "signature_url", None),
-
-        "reg_number":
-            getattr(clinic, "registration_number", ""),
     }
 
-    # ──────────────────────────────────────────────────
-    # PATIENT DATA
-    # ──────────────────────────────────────────────────
-
-    gender_val = ""
-
-    if patient.gender:
-
-        gender_val = (
-            patient.gender.value
-            if hasattr(patient.gender, "value")
-            else str(patient.gender)
-        )
-
-        if "." in gender_val:
-            gender_val = gender_val.split(".")[-1]
+    # =================================================
+    # PATIENT DICT
+    # =================================================
 
     patient_dict = {
 
@@ -298,17 +302,17 @@ def generate_prescription(
             patient.age or "",
 
         "gender":
-            gender_val,
+            (
+                patient.gender.value
 
-        "reg_no":
-            patient.reg_no
-            if hasattr(patient, "reg_no")
-            else "",
+                if patient.gender
+                else ""
+            ),
     }
 
-    # ──────────────────────────────────────────────────
-    # DOCTOR DATA
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # DOCTOR DICT
+    # =================================================
 
     doctor_dict = {
 
@@ -319,9 +323,9 @@ def generate_prescription(
             clinic.qualification or "B.H.M.S.",
     }
 
-    # ──────────────────────────────────────────────────
+    # =================================================
     # GENERATE PDF
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     pdf_bytes = generate_prescription_pdf(
 
@@ -334,9 +338,9 @@ def generate_prescription(
         patient=patient_dict
     )
 
-    # ──────────────────────────────────────────────────
-    # TEMP FILE + UPLOAD
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # TEMP FILE
+    # =================================================
 
     pdf_path = None
 
@@ -361,54 +365,43 @@ def generate_prescription(
         if pdf_path and os.path.exists(pdf_path):
 
             try:
+
                 os.unlink(pdf_path)
 
             except Exception:
                 pass
 
-    # ──────────────────────────────────────────────────
-    # SAVE URL + TOKEN
-    # ──────────────────────────────────────────────────
+    # =================================================
+    # SAVE URL
+    # =================================================
 
-    try:
+    visit.prescription_url = pdf_url
 
-        if hasattr(visit, "prescription_url"):
+    db.commit()
 
-            visit.prescription_url = pdf_url
+    # =================================================
+    # SECURE URL
+    # =================================================
 
-            # SECURE PRESCRIPTION TOKEN
-            visit.prescription_token = (
-                secrets.token_urlsafe(16)
-            )
+    secure_url = (
 
-            db.commit()
+        f"https://natural-success-production.up.railway.app"
+        f"/prescriptions/rx/"
+        f"{visit.prescription_token}"
+    )
 
-    except Exception as e:
-
-        logger.warning(
-            f"Could not save prescription_url/token: {e}"
-        )
-
-    # ──────────────────────────────────────────────────
+    # =================================================
     # WHATSAPP
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     try:
 
-        opted_out = getattr(
-            patient,
-            "whatsapp_opted_out",
-            False
-        )
-
-        if patient.phone_mobile and not opted_out:
+        if patient.phone_mobile:
 
             msg = (
-                f"Hi {patient_dict['name']}, your prescription from "
-                f"Dr. {clinic_dict['doctor_name']} is ready:\n\n"
-                f"{pdf_url}\n\n"
-                f"Save this for your records. "
-                f"For queries call {clinic_dict['phone']}"
+
+                f"Your prescription is ready:\n\n"
+                f"{secure_url}"
             )
 
             try:
@@ -442,12 +435,12 @@ def generate_prescription(
     except Exception as e:
 
         logger.error(
-            f"WhatsApp prescription send failed: {e}"
+            f"WhatsApp send failed: {e}"
         )
 
-    # ──────────────────────────────────────────────────
+    # =================================================
     # RESPONSE
-    # ──────────────────────────────────────────────────
+    # =================================================
 
     return {
 
@@ -457,24 +450,12 @@ def generate_prescription(
         "pdf_url":
             pdf_url,
 
-        "visit_id":
-            visit_id,
+        "secure_url":
+            secure_url,
 
-        "patient":
-            patient_dict["name"],
-
-        "visit_type":
-            visit_type,
-
-        "prescription_token":
+        "token":
             visit.prescription_token,
 
-        "whatsapp_sent": (
-            bool(patient.phone_mobile)
-            and not getattr(
-                patient,
-                "whatsapp_opted_out",
-                False
-            )
-        )
+        "visit_id":
+            visit.id
     }

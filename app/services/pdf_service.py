@@ -506,8 +506,10 @@ def generate_prescription_pdf(
         ""
     )
 
+    # FIXED QR URL
     qr_url = (
-        f"{backend_url}/rx/{token}"
+        f"{backend_url}"
+        f"/prescriptions/rx/{token}"
     )
 
     try:
