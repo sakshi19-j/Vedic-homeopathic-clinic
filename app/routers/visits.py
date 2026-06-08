@@ -432,44 +432,103 @@ async def send_prescription_whatsapp(
     """
     Send prescription PDF link to patient via WhatsApp.
     """
-    import os
+
     from app.models.visit import Visit
     from app.models.patient import Patient
+    from app.services.prescription_service import generate_prescription
     from app.services.whatsapp_service import send_text_message
 
+    # =====================================================
+    # GET VISIT
+    # =====================================================
+
     visit = db.query(Visit).filter(
-        Visit.id        == visit_id,
+        Visit.id == visit_id,
         Visit.clinic_id == current_user.clinic_id
     ).first()
 
     if not visit:
         raise HTTPException(404, "Visit not found")
 
-    patient = db.query(Patient).filter(Patient.id == visit.patient_id).first()
+    # =====================================================
+    # GET PATIENT
+    # =====================================================
+
+    patient = db.query(Patient).filter(
+        Patient.id == visit.patient_id
+    ).first()
 
     if not patient or not patient.phone_mobile:
-        raise HTTPException(400, "Patient has no phone number")
+        raise HTTPException(
+            status_code=400,
+            detail="Patient has no phone number"
+        )
+
+    # =====================================================
+    # WHATSAPP OPT OUT CHECK
+    # =====================================================
 
     if getattr(patient, "whatsapp_opted_out", False):
-        raise HTTPException(400, "Patient has opted out of WhatsApp")
 
-    base_url = os.getenv(
-        "APP_BASE_URL",
-        "https://natural-success-production.up.railway.app"
+        raise HTTPException(
+            status_code=400,
+            detail="Patient has opted out of WhatsApp"
+        )
+
+    # =====================================================
+    # GENERATE PRESCRIPTION
+    # =====================================================
+
+    prescription = generate_prescription(
+        db=db,
+        visit_id=visit_id,
+        clinic_id=current_user.clinic_id
     )
-    pdf_url = f"{base_url}/visits/{visit_id}/pdf"
 
-    message = (
-        f"Dear {patient.first_name}, your prescription "
-        f"from today's consultation is ready.\n\n"
-        f"View/Download: {pdf_url}\n\n"
-        f"Please save this for your records. 🙏"
+    # =====================================================
+    # GET ACTUAL SUPABASE PDF URL
+    # =====================================================
+
+    pdf_url = prescription.get("pdf_url")
+
+    if not pdf_url:
+
+        raise HTTPException(
+            status_code=500,
+            detail="PDF URL generation failed"
+        )
+
+    # =====================================================
+    # WHATSAPP MESSAGE
+    # =====================================================
+
+    message = f"""
+Dear {patient.first_name},
+
+your prescription from today's consultation is ready.
+
+View/Download PDF:
+{pdf_url}
+
+Please save this for your records. 🙏
+"""
+
+    # =====================================================
+    # SEND WHATSAPP
+    # =====================================================
+
+    result = await send_text_message(
+        patient.phone_mobile,
+        message
     )
 
-    result = await send_text_message(patient.phone_mobile, message)
+    # =====================================================
+    # RESPONSE
+    # =====================================================
 
     return {
-        "status":  result.get("status"),
+        "status": result.get("status"),
         "message": f"Prescription sent to {patient.first_name}",
-        "phone":   patient.phone_mobile
+        "phone": patient.phone_mobile,
+        "pdf_url": pdf_url
     }
