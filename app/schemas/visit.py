@@ -69,9 +69,6 @@ class HomeopathyCaseCreate(BaseModel):
     chief_complaint: Optional[str] = None
 
     # SAFE PATIENT VIEW
-    # Example:
-    # Box 1 → before breakfast
-    # Box 2 → after dinner
     patient_rx: Optional[str] = None
 
     history_present: Optional[str] = None
@@ -96,7 +93,6 @@ class HomeopathyCaseCreate(BaseModel):
     potency: Optional[str] = None
     repetition: Optional[str] = None
     miasm: Optional[str] = None
-    patient_rx: Optional[str] = None
 
 
 # =====================================================

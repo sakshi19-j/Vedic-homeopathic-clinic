@@ -112,7 +112,7 @@ def generate_prescription(
         hc = visit.homeopathy_case
 
         # SAFE PATIENT PRESCRIPTION
-        # Do NOT expose remedy names
+        # DO NOT expose remedy names
 
         if hc.patient_rx:
 
@@ -136,6 +136,9 @@ def generate_prescription(
     if visit.homeopathy_case:
 
         hc = visit.homeopathy_case
+
+        # INTERNAL ONLY
+        # NOT SHOWN TO PATIENT PDF
 
         homeopathy_case = {
 

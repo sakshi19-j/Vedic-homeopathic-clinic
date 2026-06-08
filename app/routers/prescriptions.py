@@ -1,6 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException
+)
 
-from fastapi.responses import RedirectResponse
+from fastapi.responses import (
+    RedirectResponse
+)
 
 from sqlalchemy.orm import Session
 
@@ -19,11 +25,8 @@ from app.middleware.auth_middleware import (
 )
 
 from app.models.user import User
-
 from app.models.patient import Patient
-
 from app.models.clinic import Clinic
-
 from app.models.visit import Visit
 
 
@@ -45,8 +48,11 @@ router = APIRouter(
 
 @router.post("/generate/{visit_id}")
 def create_prescription(
+
     visit_id: str,
+
     db: Session = Depends(get_db),
+
     current_user: User = Depends(
         doctor_only
     )
@@ -68,8 +74,11 @@ def create_prescription(
 
 @router.get("/download/{visit_id}")
 def download_prescription(
+
     visit_id: str,
+
     db: Session = Depends(get_db),
+
     current_user: User = Depends(
         doctor_only
     )
@@ -101,34 +110,16 @@ def download_prescription(
 
 
 # =====================================================
-# SEND PRESCRIPTION WHATSAPP
+# SECURE PUBLIC RX LINK
 # =====================================================
 
-@router.post("/send/{visit_id}")
-async def send_prescription_whatsapp(
+@router.get("/rx/{visit_id}")
+def secure_rx(
+
     visit_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(
-        doctor_only
-    )
+
+    db: Session = Depends(get_db)
 ):
-
-    # =====================================================
-    # GENERATE PRESCRIPTION
-    # =====================================================
-
-    result = generate_prescription(
-
-        db,
-
-        visit_id,
-
-        current_user.clinic_id
-    )
-
-    # =====================================================
-    # FETCH VISIT
-    # =====================================================
 
     visit = db.query(Visit).filter(
 
@@ -142,16 +133,83 @@ async def send_prescription_whatsapp(
 
             status_code=404,
 
+            detail="Prescription not found"
+        )
+
+    if not visit.prescription_url:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Prescription URL missing"
+        )
+
+    return RedirectResponse(
+
+        url=visit.prescription_url
+    )
+
+
+# =====================================================
+# SEND PRESCRIPTION WHATSAPP
+# =====================================================
+
+@router.post("/send/{visit_id}")
+async def send_prescription_whatsapp(
+
+    visit_id: str,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        doctor_only
+    )
+):
+
+    # =================================================
+    # GENERATE PRESCRIPTION
+    # =================================================
+
+    result = generate_prescription(
+
+        db,
+
+        visit_id,
+
+        current_user.clinic_id
+    )
+
+    # =================================================
+    # FETCH VISIT
+    # =================================================
+
+    visit = db.query(Visit).filter(
+
+        Visit.id == visit_id,
+
+        Visit.clinic_id == current_user.clinic_id
+
+    ).first()
+
+    if not visit:
+
+        raise HTTPException(
+
+            status_code=404,
+
             detail="Visit not found"
         )
 
-    # =====================================================
+    # =================================================
     # FETCH PATIENT
-    # =====================================================
+    # =================================================
 
     patient = db.query(Patient).filter(
 
-        Patient.id == visit.patient_id
+        Patient.id == visit.patient_id,
+
+        Patient.clinic_id == current_user.clinic_id
 
     ).first()
 
@@ -164,9 +222,9 @@ async def send_prescription_whatsapp(
             detail="Patient not found"
         )
 
-    # =====================================================
+    # =================================================
     # FETCH CLINIC
-    # =====================================================
+    # =================================================
 
     clinic = db.query(Clinic).filter(
 
@@ -183,9 +241,9 @@ async def send_prescription_whatsapp(
             detail="Clinic not found"
         )
 
-    # =====================================================
+    # =================================================
     # CHECK MOBILE
-    # =====================================================
+    # =================================================
 
     if not patient.phone_mobile:
 
@@ -196,9 +254,34 @@ async def send_prescription_whatsapp(
             detail="Patient mobile number missing"
         )
 
-    # =====================================================
+    # =================================================
+    # WHATSAPP OPT OUT
+    # =================================================
+
+    opted_out = getattr(
+
+        patient,
+
+        "whatsapp_opted_out",
+
+        False
+    )
+
+    if opted_out:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=(
+                "Patient has opted out "
+                "from WhatsApp messages"
+            )
+        )
+
+    # =================================================
     # BUILD MESSAGE
-    # =====================================================
+    # =================================================
 
     patient_name = (
 
@@ -229,9 +312,9 @@ async def send_prescription_whatsapp(
         f"- Team Vennova"
     )
 
-    # =====================================================
+    # =================================================
     # SEND WHATSAPP
-    # =====================================================
+    # =================================================
 
     try:
 
@@ -243,7 +326,9 @@ async def send_prescription_whatsapp(
 
             db=db,
 
-            clinic_id=str(current_user.clinic_id),
+            clinic_id=str(
+                current_user.clinic_id
+            ),
 
             patient_id=str(patient.id),
 
@@ -259,9 +344,9 @@ async def send_prescription_whatsapp(
             "error": str(e)
         }
 
-    # =====================================================
+    # =================================================
     # RESPONSE
-    # =====================================================
+    # =================================================
 
     return {
 

@@ -145,6 +145,17 @@ class Visit(BaseModel):
         nullable=True
     )
 
+    # =====================================================
+    # PRESCRIPTION TOKEN
+    # =====================================================
+
+    prescription_token = Column(
+        String,
+        nullable=True,
+        unique=True,
+        index=True
+    )
+
     patient = relationship(
         "Patient",
         back_populates="visits"
@@ -234,30 +245,96 @@ class HomeopathyCase(BaseModel):
         unique=True
     )
 
-    chief_complaint = Column(String, nullable=True)
+    chief_complaint = Column(
+        String,
+        nullable=True
+    )
 
-    history_present = Column(String, nullable=True)
-    history_past = Column(String, nullable=True)
-    history_surgical = Column(String, nullable=True)
-    history_family = Column(String, nullable=True)
+    history_present = Column(
+        String,
+        nullable=True
+    )
 
-    thermal_sensation = Column(String, nullable=True)
-    appetite = Column(String, nullable=True)
-    thirst = Column(String, nullable=True)
-    sleep = Column(String, nullable=True)
-    dreams = Column(String, nullable=True)
-    menstrual = Column(String, nullable=True)
-    mind_symptoms = Column(String, nullable=True)
+    history_past = Column(
+        String,
+        nullable=True
+    )
 
-    particulars = Column(String, nullable=True)
+    history_surgical = Column(
+        String,
+        nullable=True
+    )
 
-    rubrics = Column(String, nullable=True)
+    history_family = Column(
+        String,
+        nullable=True
+    )
+
+    thermal_sensation = Column(
+        String,
+        nullable=True
+    )
+
+    appetite = Column(
+        String,
+        nullable=True
+    )
+
+    thirst = Column(
+        String,
+        nullable=True
+    )
+
+    sleep = Column(
+        String,
+        nullable=True
+    )
+
+    dreams = Column(
+        String,
+        nullable=True
+    )
+
+    menstrual = Column(
+        String,
+        nullable=True
+    )
+
+    mind_symptoms = Column(
+        String,
+        nullable=True
+    )
+
+    particulars = Column(
+        String,
+        nullable=True
+    )
+
+    rubrics = Column(
+        String,
+        nullable=True
+    )
 
     # INTERNAL ONLY
-    remedy = Column(String, nullable=True)
-    potency = Column(String, nullable=True)
-    repetition = Column(String, nullable=True)
-    miasm = Column(String, nullable=True)
+    remedy = Column(
+        String,
+        nullable=True
+    )
+
+    potency = Column(
+        String,
+        nullable=True
+    )
+
+    repetition = Column(
+        String,
+        nullable=True
+    )
+
+    miasm = Column(
+        String,
+        nullable=True
+    )
 
     # SAFE PATIENT VIEW
     patient_rx = Column(

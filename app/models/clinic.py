@@ -175,6 +175,11 @@ class Clinic(BaseModel):
         default="#2563eb"
     )
 
+    prescription_theme = Column(
+        String,
+        default="CLASSIC_BLUE"
+    )
+
     # =================================================
     # ONBOARDING STATUS SYSTEM
     # =================================================
