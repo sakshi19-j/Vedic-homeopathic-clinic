@@ -6,6 +6,7 @@ from app.models.visit import (
     Visit,
     VisitStatus,
     PaymentStatus,
+    PaymentMode,
     HomeopathyCase,
     Vitals
 )
@@ -16,14 +17,14 @@ from app.schemas.visit import CloseVisitRequest
 
 
 # =====================================================
-# PRIVATE HELPER
+# PRIVATE HELPERS
 # =====================================================
 
 def _get_visit(
     db: Session,
     visit_id: str,
     clinic_id: str
-):
+) -> Visit:
 
     visit = db.query(Visit).filter(
         Visit.id == visit_id,
@@ -31,6 +32,7 @@ def _get_visit(
     ).first()
 
     if not visit:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Visit not found"
@@ -56,26 +58,25 @@ def get_visit(
     )
 
     return {
-        "id": str(visit.id),
-        "patient_id": str(visit.patient_id),
-        "clinic_id": str(visit.clinic_id),
+        "id": visit.id,
+        "patient_id": visit.patient_id,
+        "clinic_id": visit.clinic_id,
         "type": visit.type.value if visit.type else None,
         "status": visit.visit_status.value if visit.visit_status else None,
         "chief_complaint": visit.chief_complaint,
         "disease_type": visit.disease_type,
         "fee": float(visit.fee or 0),
         "notes": visit.notes,
-        "episode_id": (
-            str(visit.episode_id)
-            if visit.episode_id else None
-        ),
+        "episode_id": visit.episode_id,
         "payment_status": (
             visit.payment_status.value
-            if visit.payment_status else None
+            if visit.payment_status
+            else None
         ),
         "payment_mode": (
             visit.payment_mode.value
-            if visit.payment_mode else None
+            if visit.payment_mode
+            else None
         ),
         "visit_date": visit.visit_date,
         "created_at": visit.created_at,
@@ -114,11 +115,12 @@ def get_visit_wizard_state(
     return {
 
         "visit": {
-            "id": str(visit.id),
+            "id": visit.id,
             "type": visit.type.value if visit.type else None,
             "status": (
                 visit.visit_status.value
-                if visit.visit_status else None
+                if visit.visit_status
+                else None
             ),
             "chief_complaint": visit.chief_complaint,
             "notes": visit.notes,
@@ -127,7 +129,7 @@ def get_visit_wizard_state(
 
         "homeopathy_case": (
             {
-                "id": str(homeopathy_case.id),
+                "id": homeopathy_case.id,
                 "chief_complaint": homeopathy_case.chief_complaint,
                 "history_present": homeopathy_case.history_present,
                 "history_past": homeopathy_case.history_past,
@@ -171,13 +173,12 @@ def get_visit_wizard_state(
             if vitals else None
         ),
 
+        # ✅ FIXED PAYMENT RESPONSE
         "payment": (
             {
-                "id": str(payment.id),
+                "id": payment.id,
                 "amount": float(payment.amount or 0),
-                "payment_mode": payment.payment_mode,
-                "reference_no": payment.reference_no,
-                "notes": payment.notes
+                "mode": payment.mode
             }
             if payment else None
         )
@@ -201,7 +202,9 @@ def close_visit(
         clinic_id=clinic_id
     )
 
+    # =====================================================
     # UPDATE VISIT
+    # =====================================================
 
     visit.fee = data.fee
     visit.payment_mode = data.payment_mode
@@ -209,13 +212,17 @@ def close_visit(
     visit.visit_status = VisitStatus.COMPLETED
     visit.closed_at = datetime.utcnow()
 
-    # FIND PAYMENT
+    # =====================================================
+    # FIND EXISTING PAYMENT
+    # =====================================================
 
     payment = db.query(Payment).filter(
         Payment.visit_id == visit.id
     ).first()
 
+    # =====================================================
     # CREATE PAYMENT
+    # =====================================================
 
     if not payment:
 
@@ -223,20 +230,28 @@ def close_visit(
             visit_id=visit.id,
             clinic_id=visit.clinic_id,
             amount=data.fee,
-            payment_mode=data.payment_mode
+
+            # ✅ IMPORTANT
+            mode=data.payment_mode.value
+            if data.payment_mode else "CASH"
         )
 
         db.add(payment)
-
-    # UPDATE PAYMENT
 
     else:
 
         payment.clinic_id = visit.clinic_id
         payment.amount = data.fee
-        payment.payment_mode = data.payment_mode
 
+        # ✅ IMPORTANT
+        payment.mode = (
+            data.payment_mode.value
+            if data.payment_mode else "CASH"
+        )
+
+    # =====================================================
     # SAVE
+    # =====================================================
 
     db.commit()
     db.refresh(visit)
@@ -244,5 +259,5 @@ def close_visit(
     return {
         "success": True,
         "message": "Visit closed successfully",
-        "visit_id": str(visit.id)
+        "visit_id": visit.id
     }
