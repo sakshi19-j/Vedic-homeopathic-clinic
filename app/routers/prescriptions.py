@@ -113,17 +113,17 @@ def download_prescription(
 # SECURE PUBLIC RX LINK
 # =====================================================
 
-@router.get("/rx/{visit_id}")
-def secure_rx(
+@router.get("/rx/{token}")
+def open_prescription(
 
-    visit_id: str,
+    token: str,
 
     db: Session = Depends(get_db)
 ):
 
     visit = db.query(Visit).filter(
 
-        Visit.id == visit_id
+        Visit.prescription_token == token
 
     ).first()
 
@@ -142,7 +142,7 @@ def secure_rx(
 
             status_code=404,
 
-            detail="Prescription URL missing"
+            detail="PDF missing"
         )
 
     return RedirectResponse(
@@ -280,6 +280,16 @@ async def send_prescription_whatsapp(
         )
 
     # =================================================
+    # SECURE URL
+    # =================================================
+
+    secure_url = (
+
+        f"https://rx.vennovahealth.com/rx/"
+        f"{visit.prescription_token}"
+    )
+
+    # =================================================
     # BUILD MESSAGE
     # =================================================
 
@@ -298,11 +308,11 @@ async def send_prescription_whatsapp(
         f"Dr. {clinic.doctor_name} "
         f"is ready.\n\n"
 
-        f"📄 Prescription PDF:\n"
+        f"📄 Secure Prescription Link:\n\n"
 
-        f"{result['pdf_url']}\n\n"
+        f"{secure_url}\n\n"
 
-        f"Please save this PDF "
+        f"Please save this prescription "
         f"for future reference.\n\n"
 
         f"For help contact:\n"
@@ -366,6 +376,11 @@ async def send_prescription_whatsapp(
         "pdf_url": (
 
             result.get("pdf_url")
+        ),
+
+        "secure_url": (
+
+            secure_url
         ),
 
         "whatsapp": (

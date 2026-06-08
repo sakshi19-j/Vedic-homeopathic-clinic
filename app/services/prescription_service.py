@@ -3,6 +3,7 @@ import logging
 import tempfile
 import os
 import asyncio
+import secrets
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -351,7 +352,7 @@ def generate_prescription(
                 pass
 
     # ──────────────────────────────────────────────────
-    # SAVE URL
+    # SAVE URL + TOKEN
     # ──────────────────────────────────────────────────
 
     try:
@@ -360,12 +361,17 @@ def generate_prescription(
 
             visit.prescription_url = pdf_url
 
+            # SECURE PRESCRIPTION TOKEN
+            visit.prescription_token = (
+                secrets.token_urlsafe(16)
+            )
+
             db.commit()
 
     except Exception as e:
 
         logger.warning(
-            f"Could not save prescription_url: {e}"
+            f"Could not save prescription_url/token: {e}"
         )
 
     # ──────────────────────────────────────────────────
@@ -444,6 +450,9 @@ def generate_prescription(
 
         "visit_type":
             visit_type,
+
+        "prescription_token":
+            visit.prescription_token,
 
         "whatsapp_sent": (
             bool(patient.phone_mobile)
