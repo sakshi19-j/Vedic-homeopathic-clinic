@@ -19,3 +19,4 @@ razorpay==1.4.1
 pytz==2024.1
 email-validator==2.1.1
 alembic==1.13.1
+qrcode[pil]
