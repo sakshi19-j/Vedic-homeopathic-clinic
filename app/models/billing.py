@@ -1,39 +1,35 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Numeric, ForeignKey, Text
 from sqlalchemy.sql import func
-import uuid
 
-from app.database import base
+from app.models.base import Base
 
 
-class Payment(base):
+class Payment(Base):
 
     __tablename__ = "payments"
 
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
-    )
+    id = Column(String, primary_key=True)
 
     visit_id = Column(
-        UUID(as_uuid=True),
+        String,
         ForeignKey("visits.id"),
-        nullable=False
+        nullable=False,
+        index=True
     )
 
     clinic_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("clinics.id"),
-        nullable=False
+        String,
+        nullable=False,
+        index=True
     )
 
     amount = Column(
         Numeric(10, 2),
-        nullable=False
+        nullable=False,
+        default=0
     )
 
-    # ✅ IMPORTANT FIX
+    # DB column name = mode
     payment_mode = Column(
         "mode",
         String,
