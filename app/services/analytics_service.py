@@ -104,7 +104,7 @@ def missed_patients(db: Session, clinic_id: str):
             Visit.visit_date.desc()
         ).first()
 
-        if last_visit and last_visit.visit_date < cutoff:
+        if last_visit and last_visit.visit_date and last_visit.visit_date.replace(tzinfo=None) < cutoff.replace(tzinfo=None):
 
             missed.append({
                 "patient_id": patient.id,
