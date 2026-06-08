@@ -3,8 +3,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Numeric,
-    ForeignKey,
-    Text
+    ForeignKey
 )
 
 from sqlalchemy.orm import relationship
@@ -41,20 +40,9 @@ class Payment(Base):
         default=0
     )
 
-    # IMPORTANT
     payment_mode = Column(
         String,
         nullable=False
-    )
-
-    reference_no = Column(
-        String,
-        nullable=True
-    )
-
-    notes = Column(
-        Text,
-        nullable=True
     )
 
     created_at = Column(
