@@ -58,22 +58,38 @@ def get_visit(
     )
 
     return {
+
         "id": visit.id,
         "patient_id": visit.patient_id,
         "clinic_id": visit.clinic_id,
+
         "type": (
             visit.type.value
             if visit.type else None
         ),
+
         "status": (
             visit.visit_status.value
             if visit.visit_status else None
         ),
-        "chief_complaint": visit.chief_complaint,
-        "disease_type": visit.disease_type,
-        "fee": float(visit.fee or 0),
+
+        "chief_complaint": (
+            visit.chief_complaint
+        ),
+
+        "disease_type": (
+            visit.disease_type
+        ),
+
+        "fee": float(
+            visit.fee or 0
+        ),
+
         "notes": visit.notes,
-        "episode_id": visit.episode_id,
+
+        "episode_id": (
+            visit.episode_id
+        ),
 
         "payment_status": (
             visit.payment_status.value
@@ -87,9 +103,17 @@ def get_visit(
             else None
         ),
 
-        "visit_date": visit.visit_date,
-        "created_at": visit.created_at,
-        "closed_at": visit.closed_at
+        "visit_date": (
+            visit.visit_date
+        ),
+
+        "created_at": (
+            visit.created_at
+        ),
+
+        "closed_at": (
+            visit.closed_at
+        )
     }
 
 
@@ -159,78 +183,24 @@ def get_visit_wizard_state(
 
             {
                 "id": homeopathy_case.id,
-
-                "chief_complaint": (
-                    homeopathy_case.chief_complaint
-                ),
-
-                "history_present": (
-                    homeopathy_case.history_present
-                ),
-
-                "history_past": (
-                    homeopathy_case.history_past
-                ),
-
-                "history_surgical": (
-                    homeopathy_case.history_surgical
-                ),
-
-                "history_family": (
-                    homeopathy_case.history_family
-                ),
-
-                "thermal_sensation": (
-                    homeopathy_case.thermal_sensation
-                ),
-
-                "appetite": (
-                    homeopathy_case.appetite
-                ),
-
-                "thirst": (
-                    homeopathy_case.thirst
-                ),
-
-                "sleep": (
-                    homeopathy_case.sleep
-                ),
-
-                "dreams": (
-                    homeopathy_case.dreams
-                ),
-
-                "menstrual": (
-                    homeopathy_case.menstrual
-                ),
-
-                "mind_symptoms": (
-                    homeopathy_case.mind_symptoms
-                ),
-
-                "particulars": (
-                    homeopathy_case.particulars
-                ),
-
-                "rubrics": (
-                    homeopathy_case.rubrics
-                ),
-
-                "remedy": (
-                    homeopathy_case.remedy
-                ),
-
-                "potency": (
-                    homeopathy_case.potency
-                ),
-
-                "repetition": (
-                    homeopathy_case.repetition
-                ),
-
-                "miasm": (
-                    homeopathy_case.miasm
-                )
+                "chief_complaint": homeopathy_case.chief_complaint,
+                "history_present": homeopathy_case.history_present,
+                "history_past": homeopathy_case.history_past,
+                "history_surgical": homeopathy_case.history_surgical,
+                "history_family": homeopathy_case.history_family,
+                "thermal_sensation": homeopathy_case.thermal_sensation,
+                "appetite": homeopathy_case.appetite,
+                "thirst": homeopathy_case.thirst,
+                "sleep": homeopathy_case.sleep,
+                "dreams": homeopathy_case.dreams,
+                "menstrual": homeopathy_case.menstrual,
+                "mind_symptoms": homeopathy_case.mind_symptoms,
+                "particulars": homeopathy_case.particulars,
+                "rubrics": homeopathy_case.rubrics,
+                "remedy": homeopathy_case.remedy,
+                "potency": homeopathy_case.potency,
+                "repetition": homeopathy_case.repetition,
+                "miasm": homeopathy_case.miasm
             }
 
             if homeopathy_case else None
@@ -282,7 +252,10 @@ def get_visit_wizard_state(
                     payment.amount or 0
                 ),
 
-                "mode": payment.mode
+                # FIXED
+                "payment_mode": (
+                    payment.payment_mode
+                )
             }
 
             if payment else None
@@ -357,13 +330,19 @@ def close_visit(
     if not payment:
 
         payment = Payment(
+
             visit_id=visit.id,
+
             clinic_id=visit.clinic_id,
+
             amount=data.fee,
 
-            mode=(
+            payment_mode=(
+
                 data.payment_mode.value
+
                 if data.payment_mode
+
                 else "CASH"
             )
         )
@@ -384,9 +363,12 @@ def close_visit(
             data.fee
         )
 
-        payment.mode = (
+        payment.payment_mode = (
+
             data.payment_mode.value
+
             if data.payment_mode
+
             else "CASH"
         )
 

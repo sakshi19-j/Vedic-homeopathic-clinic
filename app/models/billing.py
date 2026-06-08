@@ -41,8 +41,8 @@ class Payment(Base):
         default=0
     )
 
-    # KEEP THIS AS mode
-    mode = Column(
+    # IMPORTANT
+    payment_mode = Column(
         String,
         nullable=False
     )
