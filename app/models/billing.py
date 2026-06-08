@@ -3,10 +3,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
-from app.database import Base
+from app.database import base
 
 
-class Payment(Base):
+class Payment(base):
 
     __tablename__ = "payments"
 
