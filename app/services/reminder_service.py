@@ -321,7 +321,7 @@ async def send_due_reminders_async(
             result = await send_template_message(
                 phone         = phone,
                 template_name = "followup_reminde",
-                language      = "en_US",
+                language      = "en",
                 components    = [
                     {
                         "type": "body",
@@ -476,7 +476,7 @@ async def send_single_reminder(
     result = await send_template_message(
         phone         = patient.phone_mobile,
         template_name = "followup_reminde",
-        language      = "en_US",
+        language      = "en",
         components    = [
             {
                 "type": "body",
