@@ -84,6 +84,16 @@ async def _job_daily_reminders(db):
                 logger.info(f"  {clinic.name}: {missed} flagged as missed")
 
                 result = await send_due_reminders(db, clinic.id)
+                from app.models.visit import Visit
+
+                recent_visits = db.query(Visit).filter(
+                    Visit.clinic_id == clinic.id,
+                    Visit.visit_status == "COMPLETED"
+                ).all()
+
+                logger.info(
+                    f"📄 Prescription followups checked: {len(recent_visits)}"
+                )
                 logger.info(
                     f"  {clinic.name}: "
                     f"sent={result['sent']} "
