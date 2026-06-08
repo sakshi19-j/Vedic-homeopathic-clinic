@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import (
     Column,
     String,
@@ -16,10 +18,19 @@ class Payment(Base):
 
     __tablename__ = "payments"
 
+    # =====================================================
+    # PRIMARY KEY
+    # =====================================================
+
     id = Column(
         String,
-        primary_key=True
+        primary_key=True,
+        default=lambda: str(uuid.uuid4())
     )
+
+    # =====================================================
+    # RELATIONS
+    # =====================================================
 
     visit_id = Column(
         String,
@@ -34,6 +45,10 @@ class Payment(Base):
         index=True
     )
 
+    # =====================================================
+    # PAYMENT DATA
+    # =====================================================
+
     amount = Column(
         Numeric(10, 2),
         nullable=False,
@@ -45,6 +60,10 @@ class Payment(Base):
         nullable=False
     )
 
+    # =====================================================
+    # TIMESTAMPS
+    # =====================================================
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
@@ -55,6 +74,10 @@ class Payment(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
+
+    # =====================================================
+    # RELATIONSHIPS
+    # =====================================================
 
     visit = relationship(
         "Visit",
