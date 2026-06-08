@@ -480,3 +480,72 @@ def generate_prescription_pdf(
     buf.close()
 
     return pdf
+
+
+# =====================================================
+# TEMP RECEIPT PDF FUNCTION
+# =====================================================
+
+    def generate_receipt_pdf(receipt):
+
+        """
+        Temporary compatibility function
+        so billing module does not crash.
+        """
+
+        from reportlab.pdfgen import canvas
+
+        import io
+
+        buffer = io.BytesIO()
+
+        c = canvas.Canvas(buffer)
+
+        c.setFont(
+            "Helvetica-Bold",
+            18
+        )
+
+        c.drawString(
+            100,
+            800,
+            "Vennova Receipt"
+        )
+
+        c.setFont(
+            "Helvetica",
+            12
+        )
+
+        c.drawString(
+            100,
+            760,
+            f"Patient: {receipt.patient_name}"
+        )
+
+        c.drawString(
+            100,
+            740,
+            f"Amount: ₹{receipt.amount}"
+        )
+
+        c.drawString(
+            100,
+            720,
+            f"Payment Mode: {receipt.payment_mode}"
+        )
+
+        c.drawString(
+            100,
+            700,
+            f"Date: {receipt.date}"
+        )
+
+        c.save()
+
+        pdf = buffer.getvalue()
+
+        buffer.close()
+
+        return pdf
+
