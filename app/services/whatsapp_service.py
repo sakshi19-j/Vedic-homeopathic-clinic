@@ -246,55 +246,163 @@ async def send_text_message(
     _write_log(db, clinic_id, patient_id, normalized, message, result, trigger=trigger)
     return result
 
-
 # =====================================================
 # SEND TEMPLATE MESSAGE
 # =====================================================
 
 async def send_template_message(
-    phone: str, template_name: str,
-    language: str, components: list,
-    db: Session = None, clinic_id: str = None,
-    patient_id: str = None, trigger: str = "manual"
+    phone: str,
+    template_name: str,
+    language: str,
+    components: list,
+    db: Session = None,
+    clinic_id: str = None,
+    patient_id: str = None,
+    trigger: str = "manual"
 ) -> dict:
 
+    # -------------------------------------------------
+    # NORMALIZE PHONE
+    # -------------------------------------------------
     normalized = normalize_phone(phone)
 
-    if not os.getenv("WHATSAPP_ACCESS_TOKEN"):
-        result = {"status": "mocked", "template": template_name, "message_id": "mock_id"}
-        _write_log(db, clinic_id, patient_id, normalized, f"[template:{template_name}]",
-                   result, template_key=template_name, trigger=trigger)
+    if not normalized:
+        result = {
+            "status": "failed",
+            "error": "Invalid phone number",
+            "phone": phone
+        }
+
+        _write_log(
+            db,
+            clinic_id,
+            patient_id,
+            phone,
+            f"[template:{template_name}]",
+            result,
+            template_key=template_name,
+            trigger=trigger
+        )
+
         return result
 
+    logger.info(
+        f"📤 Sending WhatsApp template "
+        f"template={template_name} "
+        f"to={normalized}"
+    )
+
+    # -------------------------------------------------
+    # MOCK MODE
+    # -------------------------------------------------
+    if not os.getenv("WHATSAPP_ACCESS_TOKEN"):
+
+        result = {
+            "status": "mocked",
+            "template": template_name,
+            "message_id": "mock_id",
+            "phone": normalized
+        }
+
+        _write_log(
+            db,
+            clinic_id,
+            patient_id,
+            normalized,
+            f"[template:{template_name}]",
+            result,
+            template_key=template_name,
+            trigger=trigger
+        )
+
+        return result
+
+    # -------------------------------------------------
+    # PAYLOAD
+    # -------------------------------------------------
     payload = {
         "messaging_product": "whatsapp",
-        "to":                normalized,
-        "type":              "template",
+        "recipient_type": "individual",
+        "to": normalized,
+        "type": "template",
         "template": {
-            "name":       template_name,
-            "language":   {"code": language},
-            "components": components
+            "name": template_name,
+            "language": {
+                "code": language
+            },
+            "components": components or []
         }
     }
 
+    logger.info(f"📦 WhatsApp Payload: {payload}")
+
+    # -------------------------------------------------
+    # SEND REQUEST
+    # -------------------------------------------------
     status_code, data = await _send_with_retry(payload)
 
+    logger.info(
+        f"📨 WhatsApp Response "
+        f"status={status_code} "
+        f"data={data}"
+    )
+
+    # -------------------------------------------------
+    # SUCCESS
+    # -------------------------------------------------
     if status_code == 200:
+
         result = {
-            "status":     "sent",
+            "status": "sent",
             "message_id": data.get("messages", [{}])[0].get("id", ""),
-            "template":   template_name
-        }
-    else:
-        result = {
-            "status": "failed",
-            "error":  data.get("error", {}).get("message", "Unknown"),
-            "phone":  normalized
+            "template": template_name,
+            "phone": normalized
         }
 
-    _write_log(db, clinic_id, patient_id, normalized, f"[template:{template_name}]",
-               result, template_key=template_name, trigger=trigger)
+    # -------------------------------------------------
+    # FAILURE
+    # -------------------------------------------------
+    else:
+
+        error_msg = data.get(
+            "error",
+            {}
+        ).get(
+            "message",
+            "Unknown WhatsApp error"
+        )
+
+        logger.error(
+            f"❌ WhatsApp Template Failed | "
+            f"template={template_name} | "
+            f"phone={normalized} | "
+            f"status={status_code} | "
+            f"error={error_msg}"
+        )
+
+        result = {
+            "status": "failed",
+            "error": error_msg,
+            "phone": normalized,
+            "template": template_name
+        }
+
+    # -------------------------------------------------
+    # SAVE LOG
+    # -------------------------------------------------
+    _write_log(
+        db,
+        clinic_id,
+        patient_id,
+        normalized,
+        f"[template:{template_name}]",
+        result,
+        template_key=template_name,
+        trigger=trigger
+    )
+
     return result
+
 
 
 # =====================================================
