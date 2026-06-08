@@ -49,8 +49,8 @@ def get_payment(
         "amount": float(payment.amount),
 
         "mode": (
-            payment.mode.value
-            if payment.mode
+            payment.payment_mode.value
+            if payment.payment_mode
             else None
         ),
 
