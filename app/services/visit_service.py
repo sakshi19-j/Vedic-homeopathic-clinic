@@ -60,7 +60,9 @@ def get_visit(
     return {
 
         "id": visit.id,
+
         "patient_id": visit.patient_id,
+
         "clinic_id": visit.clinic_id,
 
         "type": (
@@ -98,7 +100,7 @@ def get_visit(
         ),
 
         "payment_mode": (
-            visit.payment_mode.value
+            visit.payment_mode
             if visit.payment_mode
             else None
         ),
@@ -252,7 +254,6 @@ def get_visit_wizard_state(
                     payment.amount or 0
                 ),
 
-                # FIXED
                 "payment_mode": (
                     payment.payment_mode
                 )
@@ -339,7 +340,7 @@ def close_visit(
 
             payment_mode=(
 
-                data.payment_mode.value
+                data.payment_mode
 
                 if data.payment_mode
 
@@ -365,7 +366,7 @@ def close_visit(
 
         payment.payment_mode = (
 
-            data.payment_mode.value
+            data.payment_mode
 
             if data.payment_mode
 
