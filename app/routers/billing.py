@@ -50,10 +50,8 @@ def get_payment(
 
         "mode": payment.payment_mode or None,
 
-        "transaction_ref": payment.transaction_ref,
-
-        # Supabase public URL
-        "receipt_url": payment.receipt_url,
+        "transaction_ref": getattr(payment, 'transaction_ref', None),
+        "receipt_url": getattr(payment, 'receipt_url', None),
 
         "created_at": (
             payment.created_at.strftime("%d-%m-%Y %H:%M")
