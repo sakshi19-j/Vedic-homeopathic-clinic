@@ -391,3 +391,79 @@ def close_visit(
 
         "visit_id": visit.id
     }
+
+# =====================================================
+# UPDATE VISIT STATUS
+# =====================================================
+
+def update_visit_status(
+    db: Session,
+    clinic_id: str,
+    visit_id: str,
+    status: str
+):
+
+    visit = _get_visit(
+        db=db,
+        visit_id=visit_id,
+        clinic_id=clinic_id
+    )
+
+    # =====================================================
+    # VALIDATE STATUS
+    # =====================================================
+
+    allowed_statuses = [
+
+        VisitStatus.WAITING,
+
+        VisitStatus.IN_PROGRESS,
+
+        VisitStatus.COMPLETED,
+
+        VisitStatus.CANCELLED
+    ]
+
+    try:
+
+        status_enum = VisitStatus(status)
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid visit status"
+        )
+
+    if status_enum not in allowed_statuses:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status not allowed"
+        )
+
+    # =====================================================
+    # UPDATE STATUS
+    # =====================================================
+
+    visit.visit_status = status_enum
+
+    # Auto close time if completed
+    if status_enum == VisitStatus.COMPLETED:
+
+        visit.closed_at = datetime.utcnow()
+
+    db.commit()
+
+    db.refresh(visit)
+
+    return {
+
+        "success": True,
+
+        "visit_id": visit.id,
+
+        "status": visit.visit_status.value,
+
+        "message": "Visit status updated"
+    }
