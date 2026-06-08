@@ -1,4 +1,12 @@
-from sqlalchemy import Column, String, DateTime, Numeric, ForeignKey, Text
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    Numeric,
+    ForeignKey,
+    Text
+)
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -9,7 +17,10 @@ class Payment(Base):
 
     __tablename__ = "payments"
 
-    id = Column(String, primary_key=True)
+    id = Column(
+        String,
+        primary_key=True
+    )
 
     visit_id = Column(
         String,
@@ -30,8 +41,8 @@ class Payment(Base):
         default=0
     )
 
-    payment_mode = Column(
-        "mode",
+    # KEEP THIS AS mode
+    mode = Column(
         String,
         nullable=False
     )
@@ -57,7 +68,6 @@ class Payment(Base):
         onupdate=func.now()
     )
 
-    # FIX
     visit = relationship(
         "Visit",
         back_populates="payments"
