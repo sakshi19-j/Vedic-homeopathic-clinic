@@ -4,7 +4,12 @@ from datetime import datetime, timedelta
 
 from app.models.visit import Visit, PaymentStatus
 from app.models.patient import Patient
-from app.models.reminder import FollowUp, FollowUpStatus
+from app.models.reminder import (
+    FollowUp,
+    FollowUpStatus,
+    WhatsAppLog,
+    DeliveryStatus
+)
 
 
 # ─────────────────────────────────────────────
@@ -104,7 +109,12 @@ def missed_patients(db: Session, clinic_id: str):
             Visit.visit_date.desc()
         ).first()
 
-        if last_visit and last_visit.visit_date and last_visit.visit_date.replace(tzinfo=None) < cutoff.replace(tzinfo=None):
+        if (
+            last_visit and
+            last_visit.visit_date and
+            last_visit.visit_date.replace(tzinfo=None)
+            < cutoff.replace(tzinfo=None)
+        ):
 
             missed.append({
                 "patient_id": patient.id,
@@ -126,7 +136,6 @@ def missed_patients(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 def revenue_lost_estimate(db: Session, clinic_id: str):
 
-    # Average fee per visit for this clinic
     avg_fee = db.query(
         func.avg(Visit.fee)
     ).filter(
@@ -274,38 +283,49 @@ def whatsapp_delivery_rate(
     clinic_id: str
 ):
 
-    from app.models.reminder import (
-        Reminder,
-        ReminderStatus
-    )
-
-    total = db.query(Reminder).filter(
-        Reminder.clinic_id == clinic_id
+    total = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id
     ).count()
 
-    sent = db.query(Reminder).filter(
-        Reminder.clinic_id == clinic_id,
-        Reminder.status == ReminderStatus.SENT
+    sent = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id,
+        WhatsAppLog.delivery_status.in_([
+            DeliveryStatus.SENT,
+            DeliveryStatus.DELIVERED,
+            DeliveryStatus.READ
+        ])
     ).count()
 
-    failed = db.query(Reminder).filter(
-        Reminder.clinic_id == clinic_id,
-        Reminder.status == ReminderStatus.FAILED
+    delivered = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id,
+        WhatsAppLog.delivery_status == DeliveryStatus.DELIVERED
     ).count()
 
-    pending = db.query(Reminder).filter(
-        Reminder.clinic_id == clinic_id,
-        Reminder.status == ReminderStatus.PENDING
+    read = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id,
+        WhatsAppLog.delivery_status == DeliveryStatus.READ
+    ).count()
+
+    failed = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id,
+        WhatsAppLog.delivery_status == DeliveryStatus.FAILED
+    ).count()
+
+    pending = db.query(WhatsAppLog).filter(
+        WhatsAppLog.clinic_id == clinic_id,
+        WhatsAppLog.delivery_status == DeliveryStatus.SENT
     ).count()
 
     rate = round(
-        (sent / total * 100),
+        (delivered / total * 100),
         2
     ) if total > 0 else 0
 
     return {
         "total": total,
         "sent": sent,
+        "delivered": delivered,
+        "read": read,
         "failed": failed,
         "pending": pending,
         "delivery_rate_percent": rate
