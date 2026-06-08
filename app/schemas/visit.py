@@ -96,6 +96,7 @@ class HomeopathyCaseCreate(BaseModel):
     potency: Optional[str] = None
     repetition: Optional[str] = None
     miasm: Optional[str] = None
+    patient_rx: Optional[str] = None
 
 
 # =====================================================

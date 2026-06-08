@@ -451,3 +451,124 @@ def update_visit_status(
 
         "message": "Visit status updated"
     }
+
+import json
+
+from fastapi import HTTPException
+
+from app.models.visit import (
+    Visit,
+    HomeopathyCase
+)
+
+
+# =====================================================
+# SAVE HOMEOPATHY CASE
+# =====================================================
+
+def save_homeopathy_case(
+    db,
+    visit_id,
+    clinic_id,
+    data
+):
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == clinic_id
+    ).first()
+
+    if not visit:
+        raise HTTPException(
+            status_code=404,
+            detail="Visit not found"
+        )
+
+    homeopathy_case = db.query(
+        HomeopathyCase
+    ).filter(
+        HomeopathyCase.visit_id == visit_id
+    ).first()
+
+    if not homeopathy_case:
+
+        homeopathy_case = HomeopathyCase(
+            visit_id=visit_id
+        )
+
+        db.add(homeopathy_case)
+
+    # =================================================
+    # BASIC CASE
+    # =================================================
+
+    homeopathy_case.chief_complaint = data.chief_complaint
+    homeopathy_case.history_present = data.history_present
+    homeopathy_case.history_past = data.history_past
+    homeopathy_case.history_surgical = data.history_surgical
+    homeopathy_case.history_family = data.history_family
+
+    # =================================================
+    # GENERALS
+    # =================================================
+
+    homeopathy_case.thermal_sensation = data.thermal_sensation
+    homeopathy_case.appetite = data.appetite
+    homeopathy_case.thirst = data.thirst
+    homeopathy_case.sleep = data.sleep
+    homeopathy_case.dreams = data.dreams
+    homeopathy_case.menstrual = data.menstrual
+    homeopathy_case.mind_symptoms = data.mind_symptoms
+
+    # =================================================
+    # PARTICULARS
+    # =================================================
+
+    if data.particulars:
+        homeopathy_case.particulars = json.dumps(
+            data.particulars
+        )
+
+    # =================================================
+    # RUBRICS
+    # =================================================
+
+    if data.rubrics:
+
+        rubrics_data = []
+
+        for rubric in data.rubrics:
+
+            rubrics_data.append({
+                "text": rubric.text,
+                "grade": rubric.grade,
+                "chapter": rubric.chapter
+            })
+
+        homeopathy_case.rubrics = json.dumps(
+            rubrics_data
+        )
+
+    # =================================================
+    # INTERNAL DOCTOR DATA
+    # =================================================
+
+    homeopathy_case.remedy = data.remedy
+    homeopathy_case.potency = data.potency
+    homeopathy_case.repetition = data.repetition
+    homeopathy_case.miasm = data.miasm
+
+    # =================================================
+    # SAFE PATIENT PRESCRIPTION
+    # =================================================
+
+    homeopathy_case.patient_rx = data.patient_rx
+
+    db.commit()
+
+    db.refresh(homeopathy_case)
+
+    return {
+        "message": "Homeopathy case saved",
+        "visit_id": visit_id
+    }
