@@ -40,7 +40,7 @@ def create_visit(
 
         type=data.type,
 
-        visit_status=VisitStatus.IN_PROGRESS,
+        visit_status=VisitStatus.ACTIVE,
 
         chief_complaint=(
             data.chief_complaint
