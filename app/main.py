@@ -1,18 +1,9 @@
 import logging
 
 from fastapi import FastAPI, Request
-
-from fastapi.middleware.cors import (
-    CORSMiddleware
-)
-
-from fastapi.exceptions import (
-    RequestValidationError
-)
-
-from fastapi.responses import (
-    JSONResponse
-)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.config import (
     settings,
@@ -70,6 +61,7 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request,
@@ -78,24 +70,54 @@ async def validation_exception_handler(
     logger.error(
         f"422 on {request.url}: {exc.errors()}"
     )
+
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors()}
     )
 
+
+# =====================================================
+# FIXED CORS
+# =====================================================
+
 allowed_origins = [
-    o.strip()
-    for o in settings.ALLOWED_ORIGINS.split(",")
-    if o.strip()
-] or ["https://app.vennova.in"]
+    "https://ray-clinic.lovable.app",
+    "https://preview--ray-clinic.lovable.app",
+
+    "https://wellspring-sync-guard.lovable.app",
+    "https://preview--wellspring-sync-guard.lovable.app",
+
+    "https://vennova-sparkle-os.lovable.app",
+    "https://preview--vennova-sparkle-os.lovable.app",
+
+    "https://cure-flow-sync.lovable.app",
+    "https://preview--cure-flow-sync.lovable.app",
+
+    "https://bright-health.lovable.app",
+    "https://preview--bright-health.lovable.app",
+
+    "https://care-flow-fix.lovable.app",
+    "https://preview--care-flow-fix.lovable.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.lovable\.app",
     allow_credentials=True,
-    allow_methods=["GET","POST","PUT","DELETE","PATCH","OPTIONS"],
-    allow_headers=["Authorization","Content-Type","Accept","Origin"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
+
+logger.info(f"CORS origins loaded: {allowed_origins}")
+
+
+# =====================================================
+# ROUTERS
+# =====================================================
 
 app.include_router(auth.router)
 app.include_router(patients.router)
@@ -114,16 +136,27 @@ app.include_router(health_router)
 app.include_router(subscription_router)
 app.include_router(audit_router)
 
+
+# =====================================================
+# STARTUP
+# =====================================================
+
 @app.on_event("startup")
 def startup():
     configure_logging()
     create_tables()
     start_scheduler()
+
     logger.info("✅ Vennova v2.0 — All systems running")
     logger.info("✅ Database tables initialized")
     logger.info("✅ APScheduler started — 5 jobs registered")
     logger.info("✅ Supabase connected")
     logger.info("✅ WhatsApp services active")
+
+
+# =====================================================
+# ROOT
+# =====================================================
 
 @app.get("/")
 def root():
@@ -134,18 +167,44 @@ def root():
         "docs": "/docs"
     }
 
+
 @app.get("/health")
 def health():
-    return {"status": "healthy", "app": "Vennova", "version": "2.0.0"}
+    return {
+        "status": "healthy",
+        "app": "Vennova",
+        "version": "2.0.0"
+    }
+
 
 @app.get("/privacy-policy")
 def privacy_policy():
-    return {"app": "Vennova", "message": "Vennova respects user privacy and securely stores clinic data."}
+    return {
+        "app": "Vennova",
+        "message": (
+            "Vennova respects user privacy "
+            "and securely stores clinic data."
+        )
+    }
+
 
 @app.get("/terms")
 def terms():
-    return {"app": "Vennova", "message": "By using Vennova, users agree to use the platform responsibly."}
+    return {
+        "app": "Vennova",
+        "message": (
+            "By using Vennova, users agree "
+            "to use the platform responsibly."
+        )
+    }
+
 
 @app.get("/delete-data")
 def delete_data():
-    return {"app": "Vennova", "message": "To request deletion of account or patient data, contact support."}
+    return {
+        "app": "Vennova",
+        "message": (
+            "To request deletion of account "
+            "or patient data, contact support."
+        )
+    }

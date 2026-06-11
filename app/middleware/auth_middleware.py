@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone("Asia/Kolkata")
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 # =====================================================
@@ -113,6 +113,12 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> CurrentUser:
+
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization token"
+        )
 
     token = credentials.credentials
 
