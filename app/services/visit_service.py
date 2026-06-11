@@ -19,6 +19,59 @@ from app.schemas.visit import CloseVisitRequest
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
+# =====================================================
+# CREATE VISIT
+# =====================================================
+
+def create_visit(
+    db: Session,
+    data,
+    clinic_id: str,
+    doctor_id: str
+):
+
+    visit = Visit(
+
+        patient_id=data.patient_id,
+
+        clinic_id=clinic_id,
+
+        doctor_id=doctor_id,
+
+        type=data.type,
+
+        visit_status=VisitStatus.IN_PROGRESS,
+
+        chief_complaint=(
+            data.chief_complaint
+            if hasattr(data, "chief_complaint")
+            else None
+        ),
+
+        notes=(
+            data.notes
+            if hasattr(data, "notes")
+            else None
+        ),
+
+        fee=(
+            data.fee
+            if hasattr(data, "fee")
+            else 0
+        ),
+
+        payment_status=PaymentStatus.PENDING,
+
+        visit_date=datetime.utcnow()
+    )
+
+    db.add(visit)
+
+    db.commit()
+
+    db.refresh(visit)
+
+    return visit
 
 def _get_visit(
     db: Session,
