@@ -517,3 +517,33 @@ We wish you good health.
         phone=phone,
         message=message
     )
+
+# =====================================================
+# THANK YOU MESSAGE
+# =====================================================
+
+async def send_thankyou_message(
+
+    phone: str,
+
+    patient_name: str,
+
+    clinic_name: str
+):
+
+    message = f"""
+Dear {patient_name},
+
+Thank you for visiting {clinic_name}.
+
+We appreciate your trust.
+
+Get well soon.
+
+- Team Vennova
+"""
+
+    return await send_text_message(
+        phone=phone,
+        message=message
+    )
