@@ -15,6 +15,9 @@ from app.models.billing import Payment
 
 from app.schemas.visit import CloseVisitRequest
 
+from app.services.whatsapp_service import (
+    send_visit_thank_you
+)
 
 # =====================================================
 # PRIVATE HELPERS
@@ -434,6 +437,50 @@ def close_visit(
 
     db.refresh(visit)
 
+    # =====================================================
+    # SEND THANK YOU MESSAGE
+    # =====================================================
+
+    try:
+
+        from app.models.patient import Patient
+
+        import asyncio
+
+        patient = db.query(Patient).filter(
+            Patient.id == visit.patient_id
+        ).first()
+
+        if patient and patient.phone_mobile:
+
+            loop = asyncio.new_event_loop()
+
+            asyncio.set_event_loop(loop)
+
+            loop.run_until_complete(
+
+                send_visit_thank_you(
+
+                    phone=patient.phone_mobile,
+
+                    patient_name=(
+                        f"{patient.first_name} "
+                        f"{patient.last_name or ''}"
+                    ).strip(),
+
+                    clinic_name="Vennova Clinic"
+                )
+            )
+
+            loop.close()
+
+    except Exception as e:
+
+        print(
+            "WhatsApp thankyou failed:",
+            str(e)
+        )
+        
     return {
 
         "success": True,

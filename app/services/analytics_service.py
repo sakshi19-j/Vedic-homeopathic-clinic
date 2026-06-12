@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 from app.models.visit import Visit, PaymentStatus
 from app.models.patient import Patient
 from app.models.reminder import (
-    FollowUp,
-    FollowUpStatus,
     WhatsAppLog,
     DeliveryStatus
 )
-
+from app.models.reminder import (
+    FollowupReminder
+)
 
 # ─────────────────────────────────────────────
 # DAILY REVENUE
@@ -195,14 +195,14 @@ def followups_due_today(db: Session, clinic_id: str):
 
     today = datetime.utcnow().date()
 
-    followups = db.query(FollowUp).filter(
-        FollowUp.clinic_id == clinic_id,
-        FollowUp.status == FollowUpStatus.PENDING
+    followups = db.query(FollowupReminder).filter(
+        FollowupReminder.clinic_id == clinic_id,
+        FollowupReminder.status == "PENDING"
     ).all()
 
     due_today = [
         f for f in followups
-        if f.due_date and f.due_date.date() <= today
+        if f.followup_date and f.followup_date.date() <= today
     ]
 
     return {

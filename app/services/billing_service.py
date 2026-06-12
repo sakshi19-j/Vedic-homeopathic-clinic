@@ -15,6 +15,10 @@ from app.services.pdf_service import (
 
 from app.utils.storage import upload_pdf
 
+from app.services.whatsapp_service import (
+    send_billing_receipt
+)
+
 import uuid
 
 
@@ -267,6 +271,50 @@ def generate_receipt(
     # =================================================
     # RESPONSE
     # =================================================
+    # =================================================
+    # SEND WHATSAPP RECEIPT
+    # =================================================
+
+    # =================================================
+# SEND WHATSAPP RECEIPT
+# =================================================
+
+    whatsapp_result = None
+
+    try:
+
+        if patient and patient.phone_mobile:
+
+            import asyncio
+
+            loop = asyncio.new_event_loop()
+
+            asyncio.set_event_loop(loop)
+
+            whatsapp_result = loop.run_until_complete(
+
+                send_billing_receipt(
+
+                    phone=patient.phone_mobile,
+
+                    patient_name=receipt_data.patient_name,
+
+                    clinic_name=receipt_data.clinic_name,
+
+                    receipt_url=pdf_url
+                )
+            )
+
+            loop.close()
+
+    except Exception as e:
+
+        whatsapp_result = {
+
+            "status": "failed",
+
+            "error": str(e)
+        }
 
     return {
 
@@ -284,6 +332,9 @@ def generate_receipt(
 
         "visit_date":
             receipt_data.visit_date,
+
+        "whatsapp":
+            whatsapp_result,
 
         "message":
             "Receipt generated successfully"

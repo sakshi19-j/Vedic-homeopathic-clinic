@@ -307,3 +307,39 @@ health and prosperity.
 
         message=message
     )
+
+# =====================================================
+# BILLING RECEIPT MESSAGE
+# =====================================================
+
+async def send_billing_receipt(
+
+    phone: str,
+
+    patient_name: str,
+
+    clinic_name: str,
+
+    receipt_url: str
+
+):
+
+    message = f"""
+Hi {patient_name},
+
+Your payment receipt from {clinic_name} is ready.
+
+Download Receipt:
+{receipt_url}
+
+Thank you for visiting us.
+
+- Team Vennova
+"""
+
+    return await send_text_message(
+
+        phone=phone,
+
+        message=message
+    )
