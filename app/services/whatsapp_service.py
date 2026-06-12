@@ -414,3 +414,106 @@ async def send_template_message(
         "phone":
             normalized
     }
+
+# =====================================================
+# SEND PRESCRIPTION MESSAGE
+# =====================================================
+
+async def send_prescription_message(
+
+    phone: str,
+
+    patient_name: str,
+
+    clinic_name: str,
+
+    prescription_url: str,
+
+    support_phone: str = ""
+):
+
+    message = f"""
+Hi {patient_name},
+
+Your prescription from {clinic_name} is ready.
+
+View Prescription:
+{prescription_url}
+
+Please save this prescription for future reference.
+
+For help contact:
+{support_phone}
+
+- Team Vennova
+"""
+
+    return await send_text_message(
+        phone=phone,
+        message=message
+    )
+
+
+# =====================================================
+# FOLLOWUP REMINDER
+# =====================================================
+
+async def send_followup_reminder(
+
+    phone: str,
+
+    patient_name: str,
+
+    clinic_name: str,
+
+    reminder_date: str = ""
+):
+
+    message = f"""
+Hi {patient_name},
+
+This is a reminder from {clinic_name}.
+
+Your follow-up consultation is scheduled.
+
+Date:
+{reminder_date}
+
+Please reply if you need help.
+
+- Team Vennova
+"""
+
+    return await send_text_message(
+        phone=phone,
+        message=message
+    )
+
+
+# =====================================================
+# VISIT THANK YOU
+# =====================================================
+
+async def send_visit_thank_you(
+
+    phone: str,
+
+    patient_name: str,
+
+    clinic_name: str
+):
+
+    message = f"""
+Dear {patient_name},
+
+Thank you for visiting {clinic_name}.
+
+We wish you good health.
+
+- Team Vennova
+"""
+
+    return await send_text_message(
+        phone=phone,
+        message=message
+    )
