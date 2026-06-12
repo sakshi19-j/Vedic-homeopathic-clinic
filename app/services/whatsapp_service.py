@@ -76,26 +76,22 @@ async def send_text_message(
         "Content-Type":
             "application/json"
     }
-
     payload = {
 
-        "messaging_product":
-            "whatsapp",
+    "messaging_product":
+        "whatsapp",
 
-        "to":
-            formatted_phone,
+    "to":
+        formatted_phone,
 
-        "type":
-            "template",
+    "type":
+        "text",
 
-        "template": {
+    "text": {
 
-            "name": "hello_world",
+        "body": message
+    }
 
-            "language": {
-                "code": "en_US"
-            }
-        }
     }
 
     response = requests.post(
