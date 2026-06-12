@@ -197,7 +197,7 @@ async def create_staff(
     Staff can then log in via frontend with the given password.
     """
 
-    valid_roles = ("reception", "allopathy", "homeopathy")
+    valid_roles = ("admin","reception","allopathy","homeopathy")
     if data.role not in valid_roles:
         raise HTTPException(400, f"Role must be one of: {valid_roles}")
 
