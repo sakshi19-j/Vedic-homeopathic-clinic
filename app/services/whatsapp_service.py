@@ -58,16 +58,26 @@ def _check_rate_limit_db(clinic_id: str, db: Session) -> bool:
 # =====================================================
 
 def normalize_phone(phone: str) -> str:
-    """Returns 12-digit: 919876543210"""
+    """
+    Normalize international phone numbers
+    for WhatsApp Cloud API.
+
+    Examples:
+    +91 9552402949  -> 919552402949
+    9552402949      -> 919552402949
+    +1 (415) 5552671 -> 14155552671
+    """
+
     if not phone:
         return ""
-    phone = phone.strip().replace(" ", "").replace("-", "")
-    if phone.startswith("+"):
-        phone = phone[1:]
-    if phone.startswith("0091"):
-        phone = phone[4:]
-    if len(phone) == 10 and not phone.startswith("91"):
+
+    # keep digits only
+    phone = ''.join(filter(str.isdigit, str(phone)))
+
+    # India fallback only for plain 10-digit numbers
+    if len(phone) == 10:
         phone = f"91{phone}"
+
     return phone
 
 

@@ -11,3 +11,4 @@ from app.models.appointment import Appointment
 from app.models.import_job import ImportJob
 from app.models.medicine import Medicine
 from app.models.doctor_profile import DoctorProfile
+from app.models.followup_reminder import FollowupReminder
