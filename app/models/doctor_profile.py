@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String
+
 from app.models.base import BaseModel
 
 
@@ -6,17 +7,54 @@ class DoctorProfile(BaseModel):
 
     __tablename__ = "doctor_profiles"
 
-    user_id = Column(
+    clinic_id = Column(
         String,
-        ForeignKey("users.id"),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    doctor_name = Column(
+        String,
         nullable=False
     )
 
-    doctor_name = Column(String)
-    clinic_name = Column(String)
-    degree = Column(String)
-    registration_number = Column(String)
-    whatsapp_number = Column(String)
-    signature_url = Column(String)
-    clinic_logo_url = Column(String)
-    specialty = Column(String)
+    clinic_name = Column(
+        String,
+        nullable=False
+    )
+
+    qualification = Column(
+        String,
+        nullable=True
+    )
+
+    registration_number = Column(
+        String,
+        nullable=True
+    )
+
+    specialty = Column(
+        String,
+        nullable=True
+    )
+
+    whatsapp_number = Column(
+        String,
+        nullable=True
+    )
+
+    clinic_address = Column(
+        String,
+        nullable=True
+    )
+
+    clinic_logo_url = Column(
+        String,
+        nullable=True
+    )
+
+    signature_url = Column(
+        String,
+        nullable=True
+    )

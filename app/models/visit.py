@@ -145,6 +145,22 @@ class Visit(BaseModel):
         nullable=True
     )
 
+    followup_date = Column(
+        DateTime,
+        nullable=True
+    )
+
+    followup_status = Column(
+        String,
+        default="PENDING"
+    )
+
+    from sqlalchemy import Boolean
+
+    followup_reminder_sent = Column(
+        Boolean,
+        default=False
+    )
     # =====================================================
     # PRESCRIPTION TOKEN
     # =====================================================

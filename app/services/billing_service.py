@@ -252,7 +252,16 @@ def generate_receipt(
     if visit.payments:
 
         visit.payments[0].receipt_url = pdf_url
+        from app.models.visit import (
+            VisitStatus,
+            PaymentStatus
+        )
 
+        visit.payment_status = PaymentStatus.PAID
+
+        visit.visit_status = VisitStatus.COMPLETED
+
+        visit.closed_at = datetime.utcnow()
         db.commit()
 
     # =================================================

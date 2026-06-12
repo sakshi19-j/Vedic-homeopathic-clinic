@@ -255,7 +255,7 @@ def get_pending_payments(
     visits = db.query(Visit).filter(
         Visit.clinic_id == current_user.clinic_id,
         Visit.payment_status == PaymentStatus.PENDING,
-        Visit.visit_status == VisitStatus.COMPLETED
+        Visit.visit_status == VisitStatus.BILLING
     ).order_by(
         Visit.closed_at.desc()
     ).all()

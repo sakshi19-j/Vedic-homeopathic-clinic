@@ -376,7 +376,9 @@ def generate_prescription(
     # =================================================
 
     visit.prescription_url = pdf_url
+    from app.models.visit import VisitStatus
 
+    visit.visit_status = VisitStatus.BILLING
     db.commit()
 
     # =================================================
