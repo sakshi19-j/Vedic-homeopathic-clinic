@@ -86,11 +86,15 @@ async def send_text_message(
             formatted_phone,
 
         "type":
-            "text",
+            "template",
 
-        "text": {
-            "preview_url": False,
-            "body": message
+        "template": {
+
+            "name": "hello_world",
+
+            "language": {
+                "code": "en_US"
+            }
         }
     }
 
@@ -135,7 +139,6 @@ async def send_text_message(
 
         "error": data
     }
-
 
 # =====================================================
 # PRESCRIPTION MESSAGE
