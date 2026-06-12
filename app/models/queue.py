@@ -13,7 +13,7 @@ class Queue(BaseModel):
     token_number   = Column(Integer, nullable=False)
     queue_date     = Column(Date, nullable=False, index=True)
     visit_type     = Column(String, default=VisitTypeQueue.WALKIN)
-    status         = Column(String, default=QueueStatus.WAITING, index=True)
+    status         = Column(String,default="WAITING",index=True)
     priority       = Column(Integer, default=0)      # 1=urgent, 0=normal
     check_in_time  = Column(DateTime, default=datetime.utcnow)
     called_time    = Column(DateTime, nullable=True)

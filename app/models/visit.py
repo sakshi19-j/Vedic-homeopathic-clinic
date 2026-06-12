@@ -195,6 +195,11 @@ class Visit(BaseModel):
         back_populates="visit"
     )
 
+    medicines = relationship(
+        "Medicine",
+        backref="visit",
+        cascade="all, delete-orphan"
+    )
 
 # =====================================================
 # ALLOPATHY RX

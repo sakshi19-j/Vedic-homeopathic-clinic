@@ -352,6 +352,8 @@ async def send_template_message(
     # -------------------------------------------------
     if status_code == 200:
 
+        logger.info(f"WHATSAPP SUCCESS RESPONSE: {data}")
+
         result = {
             "status": "sent",
             "message_id": data.get("messages", [{}])[0].get("id", ""),
@@ -359,10 +361,9 @@ async def send_template_message(
             "phone": normalized
         }
 
-    # -------------------------------------------------
-    # FAILURE
-    # -------------------------------------------------
     else:
+
+        logger.error(f"WHATSAPP FAILED RESPONSE: {data}")
 
         error_msg = data.get(
             "error",
@@ -370,14 +371,6 @@ async def send_template_message(
         ).get(
             "message",
             "Unknown WhatsApp error"
-        )
-
-        logger.error(
-            f"❌ WhatsApp Template Failed | "
-            f"template={template_name} | "
-            f"phone={normalized} | "
-            f"status={status_code} | "
-            f"error={error_msg}"
         )
 
         result = {

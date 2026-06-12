@@ -9,3 +9,5 @@ from app.models.queue import Queue
 from app.models.staff import Staff
 from app.models.appointment import Appointment
 from app.models.import_job import ImportJob
+from app.models.medicine import Medicine
+from app.models.doctor_profile import DoctorProfile
