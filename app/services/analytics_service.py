@@ -9,7 +9,10 @@ from app.models.reminder import (
     DeliveryStatus
 )
 from app.models.reminder import (
-    FollowupReminder
+    FollowUp,
+    FollowUpStatus,
+    WhatsAppLog,
+    DeliveryStatus
 )
 
 # ─────────────────────────────────────────────
@@ -191,24 +194,50 @@ def retention_rate(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 # FOLLOWUPS DUE TODAY
 # ─────────────────────────────────────────────
-def followups_due_today(db: Session, clinic_id: str):
+
+# =====================================================
+# FOLLOWUPS DUE TODAY
+# =====================================================
+
+def followups_due_today(
+    db: Session,
+    clinic_id: str
+):
 
     today = datetime.utcnow().date()
 
-    followups = db.query(FollowupReminder).filter(
-        FollowupReminder.clinic_id == clinic_id,
-        FollowupReminder.status == "PENDING"
+    followups = db.query(
+        FollowUp
+    ).filter(
+        FollowUp.clinic_id == clinic_id,
+        FollowUp.status == FollowUpStatus.PENDING
     ).all()
 
     due_today = [
+
         f for f in followups
-        if f.followup_date and f.followup_date.date() <= today
+
+        if (
+            f.due_date
+            and
+            f.due_date.date() <= today
+        )
     ]
 
     return {
-        "date": str(today),
-        "count": len(due_today)
+
+        "date":
+            str(today),
+
+        "count":
+            len(due_today),
+
+        "followups":
+            due_today
     }
+
+
+
 
 
 # ─────────────────────────────────────────────
