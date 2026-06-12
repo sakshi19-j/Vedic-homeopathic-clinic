@@ -8,7 +8,7 @@ from app.models.reminder import (
     WhatsAppLog,
     DeliveryStatus
 )
-from app.models.followup import (
+from app.models.reminder import (
     FollowupReminder
 )
 
