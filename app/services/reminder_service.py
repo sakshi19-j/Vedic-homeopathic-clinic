@@ -28,14 +28,17 @@ OVERDUE_CUTOFF_DAYS = 1
 def get_template_key(followup_type: FollowUpType) -> str:
 
     mapping = {
-        FollowUpType.THREE_DAY:   "followup_3d",
-        FollowUpType.SEVEN_DAY:   "followup_7d",
-        FollowUpType.FIFTEEN_DAY: "followup_15d",
-        FollowUpType.MONTHLY:     "followup_monthly",
-        FollowUpType.CUSTOM:      "followup_7d",
+        FollowUpType.THREE_DAY:   "followup_reminder",
+        FollowUpType.SEVEN_DAY:   "followup_reminder",
+        FollowUpType.FIFTEEN_DAY: "followup_reminder",
+        FollowUpType.MONTHLY:     "followup_reminder",
+        FollowUpType.CUSTOM:      "followup_reminder",
     }
 
-    return mapping.get(followup_type, "followup_7d")
+    return mapping.get(
+        followup_type,
+        "followup_reminder"
+    )
 
 
 # =====================================================
@@ -210,7 +213,9 @@ def get_due_reminders(
             "template_key": get_template_key(f.type),
             "template_vars": [
                 patient.first_name,
-                clinic.phone if clinic else "9765402949"
+                clinic.name if clinic else "Vedic Homeopathic Clinic",
+                f.due_date.strftime("%d-%m-%Y")
+                if f.due_date else ""
             ]
         })
 
@@ -320,21 +325,25 @@ async def send_due_reminders_async(
 
             result = await send_template_message(
                 phone         = phone,
-                template_name = "hello_world",
+                template_name = reminder["template_key"],
                 language = "en_US",
                 components    = [
                     {
                         "type": "body",
                         "parameters": [
-                            {
-                                "type": "text",
-                                "text": reminder["template_vars"][0]
-                            },
-                            {
-                                "type": "text",
-                                "text": reminder["template_vars"][1]
-                            },
-                        ]
+                    {
+                        "type": "text",
+                        "text": reminder["template_vars"][0]
+                    },
+                    {
+                        "type": "text",
+                        "text": reminder["template_vars"][1]
+                    },
+                    {
+                        "type": "text",
+                        "text": reminder["template_vars"][2]
+                    },
+                ]
                     }
                 ],
                 db         = db,
@@ -475,7 +484,7 @@ async def send_single_reminder(
 
     result = await send_template_message(
         phone         = patient.phone_mobile,
-        template_name = "hello_world",
+        template_name = get_template_key(followup.type),
         language = "en_US",
         components    = [
             {
@@ -487,10 +496,19 @@ async def send_single_reminder(
                     },
                     {
                         "type": "text",
-                        "text":
-                            clinic.phone
+                        "text": (
+                            clinic.name
                             if clinic
-                            else "9765402949"
+                            else "Vedic Homeopathic Clinic"
+                        )
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            followup.due_date.strftime("%d-%m-%Y")
+                            if followup.due_date
+                            else ""
+                        )
                     },
                 ]
             }
