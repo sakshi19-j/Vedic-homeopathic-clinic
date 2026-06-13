@@ -156,7 +156,8 @@ def get_todays_queue(
             Queue.queue_date == today,
             Queue.status.in_([
                 "WAITING",
-                "IN_TREATMENT"
+                "IN_TREATMENT",
+                "BILLING_PENDING"
             ])
          )
     ).order_by(
@@ -302,7 +303,7 @@ def call_next(
     ).first()
 
     if current:
-        current.status = "WAITING_BILLING"
+        current.status = "BILLING_PENDING"
         current.end_time = now_ist()
 
         db.commit()
@@ -426,6 +427,11 @@ def get_queue_stats(
         if str(e.status) == "IN_TREATMENT"
     ])
 
+    billing_pending = len([
+        e for e in entries
+        if str(e.status) == "BILLING_PENDING"
+    ])
+    
     completed = len([
         e for e in entries
         if str(e.status) == "COMPLETED"
@@ -444,6 +450,8 @@ def get_queue_stats(
         "waiting": waiting,
 
         "in_treatment": in_treatment,
+
+        "billing_pending": billing_pending,
 
         "completed": completed,
 
