@@ -497,7 +497,6 @@ def close_visit(
 
             status=FollowUpStatus.PENDING,
 
-            notes="Auto-created after consultation"
         )
 
         db.add(followup)
