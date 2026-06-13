@@ -368,7 +368,7 @@ def close_visit(
 
     from app.models.queue import Queue
 
-    from app.models.followup import (
+    from app.models.reminder import (
         FollowUp,
         FollowUpStatus
     )
