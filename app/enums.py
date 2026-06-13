@@ -27,12 +27,16 @@ class VisitType(str, Enum):
     AYURVEDIC  = "AYURVEDIC"   # ← ADDED
 
 class QueueStatus(str, Enum):
-    WAITING      = "WAITING"
-    CHECKED_IN   = "CHECKED_IN"
+
+    WAITING = "WAITING"
+
     IN_TREATMENT = "IN_TREATMENT"
-    COMPLETED    = "COMPLETED"
-    NO_SHOW      = "NO_SHOW"
-    CANCELLED    = "CANCELLED"
+
+    WAITING_BILLING = "WAITING_BILLING"
+
+    COMPLETED = "COMPLETED"
+
+    NO_SHOW = "NO_SHOW"
 
 class VisitTypeQueue(str, Enum):
     WALKIN      = "WALKIN"

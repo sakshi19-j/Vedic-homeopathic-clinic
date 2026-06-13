@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.models.visit import (
     Visit,
@@ -324,6 +324,10 @@ def get_visit_wizard_state(
 # CLOSE VISIT
 # =====================================================
 
+# =====================================================
+# CLOSE VISIT
+# =====================================================
+
 def close_visit(
     db: Session,
     clinic_id: str,
@@ -358,17 +362,24 @@ def close_visit(
         data.payment_mode
     )
 
-    visit.payment_status = (
-        PaymentStatus.PAID
+    # =====================================================
+    # FINAL VISIT LIFECYCLE UPDATE
+    # =====================================================
+
+    from app.models.queue import Queue
+
+    from app.models.followup import (
+        FollowUp,
+        FollowUpStatus
     )
 
-    visit.visit_status = (
-        VisitStatus.COMPLETED
-    )
+    # visit completed
+    visit.visit_status = VisitStatus.COMPLETED
 
-    visit.closed_at = (
-        datetime.utcnow()
-    )
+    # keep pending until billing
+    visit.payment_status = PaymentStatus.PENDING
+
+    visit.closed_at = datetime.utcnow()
 
     # =====================================================
     # FIND EXISTING PAYMENT
@@ -430,25 +441,60 @@ def close_visit(
         )
 
     # =====================================================
-    # SAVE
+    # UPDATE QUEUE STATUS
     # =====================================================
-# =====================================================
-    # UPDATE QUEUE STATUS TO DONE
-    # =====================================================
-    try:
-        from app.models.queue import Queue
-        from datetime import date
-        queue_entry = db.query(Queue).filter(
-            Queue.patient_id == str(visit.patient_id),
-            Queue.clinic_id == str(visit.clinic_id),
-            Queue.queue_date == date.today()
-        ).first()
-        if queue_entry:
-            queue_entry.status = "COMPLETED"
+
+    queue_entry = db.query(Queue).filter(
+        Queue.visit_id == visit.id
+    ).first()
+
+    if queue_entry:
+
+        queue_entry.status = "WAITING_BILLING"
+
+        # optional if fields exist
+        try:
             queue_entry.completed_at = datetime.utcnow()
+        except:
+            pass
+
+        try:
             queue_entry.end_time = datetime.utcnow()
-    except Exception as e:
-        pass  # non-blocking
+        except:
+            pass
+
+    # =====================================================
+    # CREATE FOLLOWUP
+    # =====================================================
+
+    existing_followup = db.query(FollowUp).filter(
+        FollowUp.visit_id == visit.id
+    ).first()
+
+    if not existing_followup:
+
+        from datetime import timedelta
+
+        followup = FollowUp(
+
+            clinic_id=visit.clinic_id,
+
+            patient_id=visit.patient_id,
+
+            visit_id=visit.id,
+
+            due_date=datetime.utcnow() + timedelta(days=7),
+
+            status=FollowUpStatus.PENDING,
+
+            notes="Auto-created after consultation"
+        )
+
+        db.add(followup)
+
+    # =====================================================
+    # SAVE EVERYTHING
+    # =====================================================
 
     db.commit()
 
@@ -497,7 +543,7 @@ def close_visit(
             "WhatsApp thankyou failed:",
             str(e)
         )
-        
+
     return {
 
         "success": True,
@@ -508,7 +554,6 @@ def close_visit(
 
         "visit_id": visit.id
     }
-
 # =====================================================
 # UPDATE VISIT STATUS
 # =====================================================

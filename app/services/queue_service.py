@@ -156,8 +156,7 @@ def get_todays_queue(
             Queue.queue_date == today,
             Queue.status.in_([
                 "WAITING",
-                "IN_TREATMENT",
-                "COMPLETED"
+                "IN_TREATMENT"
             ])
          )
     ).order_by(
@@ -303,7 +302,7 @@ def call_next(
     ).first()
 
     if current:
-        current.status = "COMPLETED"
+        current.status = "WAITING_BILLING"
         current.end_time = now_ist()
 
         db.commit()

@@ -260,13 +260,35 @@ def generate_receipt(
             VisitStatus,
             PaymentStatus
         )
-
+        visit.payment_mode = (
+            visit.payment_mode
+            if visit.payment_mode
+            else "CASH"
+        )
         visit.payment_status = PaymentStatus.PAID
 
         visit.visit_status = VisitStatus.COMPLETED
 
         visit.closed_at = datetime.utcnow()
-        db.commit()
+        # ---------------------------------------------
+# UPDATE QUEUE STATUS AFTER PAYMENT
+# ---------------------------------------------
+
+    from app.models.queue import Queue
+
+    queue_entry = db.query(Queue).filter(
+        Queue.visit_id == visit.id
+    ).first()
+
+    if queue_entry:
+
+        queue_entry.status = "COMPLETED"
+
+    # ---------------------------------------------
+    # SAVE CHANGES
+    # ---------------------------------------------
+
+    db.commit()
 
     # =================================================
     # RESPONSE
