@@ -432,7 +432,23 @@ def close_visit(
     # =====================================================
     # SAVE
     # =====================================================
-
+# =====================================================
+    # UPDATE QUEUE STATUS TO DONE
+    # =====================================================
+    try:
+        from app.models.queue import Queue
+        from datetime import date
+        queue_entry = db.query(Queue).filter(
+            Queue.patient_id == str(visit.patient_id),
+            Queue.clinic_id == str(visit.clinic_id),
+            Queue.queue_date == date.today()
+        ).first()
+        if queue_entry:
+            queue_entry.status = "DONE"
+            queue_entry.completed_at = datetime.utcnow()
+    except Exception as e:
+        pass  # non-blocking
+    
     db.commit()
 
     db.refresh(visit)
