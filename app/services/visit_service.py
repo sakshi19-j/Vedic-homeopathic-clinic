@@ -374,7 +374,17 @@ def close_visit(
     )
 
     # visit completed
-    visit.visit_status = VisitStatus.COMPLETED
+    visit.visit_status = VisitStatus.BILLING
+
+    from app.models.queue import Queue
+
+    queue_entry = db.query(Queue).filter(
+        Queue.visit_id == visit.id
+    ).first()
+
+    if queue_entry:
+        queue_entry.status = "COMPLETED"
+        queue_entry.end_time = datetime.utcnow()
 
     # keep pending until billing
     visit.payment_status = PaymentStatus.PENDING
