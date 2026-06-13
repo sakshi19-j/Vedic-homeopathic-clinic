@@ -13,7 +13,7 @@ from app.config import settings
 
 client = create_client(
     settings.SUPABASE_URL,
-    settings.SUPABASE_KEY
+    settings.SUPABASE_SERVICE_KEY
 )
 
 

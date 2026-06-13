@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.models.followup import (
+from app.models.reminder import (
     FollowupReminder
 )
 
