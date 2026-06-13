@@ -450,7 +450,7 @@ def close_visit(
 
     if queue_entry:
 
-        queue_entry.status = "WAITING_BILLING"
+        queue_entry.status = "BILLING_PENDING"
 
         # optional if fields exist
         try:
