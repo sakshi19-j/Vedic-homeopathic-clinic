@@ -444,11 +444,12 @@ def close_visit(
             Queue.queue_date == date.today()
         ).first()
         if queue_entry:
-            queue_entry.status = "DONE"
+            queue_entry.status = "COMPLETED"
             queue_entry.completed_at = datetime.utcnow()
+            queue_entry.end_time = datetime.utcnow()
     except Exception as e:
         pass  # non-blocking
-    
+
     db.commit()
 
     db.refresh(visit)

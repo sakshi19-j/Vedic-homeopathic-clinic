@@ -153,11 +153,16 @@ def get_todays_queue(
     entries = db.query(Queue).filter(
         and_(
             Queue.clinic_id == clinic_id,
-            Queue.queue_date == today
-        )
+            Queue.queue_date == today,
+            Queue.status.in_([
+                "WAITING",
+                "IN_TREATMENT",
+                "COMPLETED"
+            ])
+         )
     ).order_by(
-        Queue.priority.desc(),
-        Queue.token_number.asc()
+            Queue.priority.desc(),
+            Queue.token_number.asc()
     ).all()
 
     result = []
@@ -242,7 +247,7 @@ def get_current_patient(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status == "IN_TREATMENT"
+            Queue.status.in_(["IN_TREATMENT"])
         )
     ).first()
 
