@@ -59,6 +59,11 @@ class Clinic(BaseModel):
         nullable=True
     )
 
+    website = Column(
+        String,
+        nullable=True
+    )
+
     logo_url = Column(
         String,
         nullable=True
@@ -74,6 +79,10 @@ class Clinic(BaseModel):
         nullable=True
     )
 
+    footer_text = Column(
+        String,
+        nullable=True
+    )
     # =================================================
     # CLINIC TYPE
     # =================================================

@@ -12,6 +12,8 @@ from reportlab.lib.units import mm
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from reportlab.platypus import Image
+from reportlab.lib.colors import HexColor
 
 logger = logging.getLogger(__name__)
 
@@ -219,33 +221,154 @@ def generate_receipt_pdf(receipt):
 
     from reportlab.pdfgen import canvas
 
+    from reportlab.lib.pagesizes import A4
+
+    from reportlab.lib.units import mm
+
+    from reportlab.lib import colors
+
+    from reportlab.lib.utils import ImageReader
+
     buffer = io.BytesIO()
 
-    c = canvas.Canvas(buffer)
+    c = canvas.Canvas(
+        buffer,
+        pagesize=A4
+    )
 
-    # -------------------------------------------------
+    W, H = A4
+
+    # =================================================
+    # CLINIC COLORS
+    # =================================================
+
+    PRIMARY = colors.HexColor(
+    getattr(
+        receipt,
+        "primary_color",
+        "#2563eb"
+    )
+    )
+
+    SECONDARY = colors.HexColor(
+        getattr(
+            receipt,
+            "secondary_color",
+            "#14b8a6"
+        )
+    )
+
+    LIGHT = colors.HexColor("#f8fafc")
+
+    DARK = colors.HexColor("#0f172a")
+
+    # =================================================
+    # HEADER
+    # =================================================
+
+    c.setFillColor(PRIMARY)
+
+    c.rect(
+        0,
+        H - 55 * mm,
+        W,
+        55 * mm,
+        fill=1,
+        stroke=0
+    )
+    logo = _load_image(
+        getattr(receipt, "logo_url", None)
+    )
+
+    if logo:
+
+        try:
+
+            c.drawImage(
+                logo,
+                W - 55 * mm,
+                H - 45 * mm,
+                width=28 * mm,
+                height=28 * mm,
+                preserveAspectRatio=True,
+                mask="auto"
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                f"Receipt logo error: {e}"
+            )
+
+    # =================================================
     # TITLE
-    # -------------------------------------------------
+    # =================================================
+
+    c.setFillColor(colors.white)
 
     c.setFont(
         "Helvetica-Bold",
-        18
+        22
     )
 
     c.drawString(
-        80,
-        800,
-        "Vennova Receipt"
+        20 * mm,
+        H - 22 * mm,
+        "PAYMENT RECEIPT"
     )
 
-    # -------------------------------------------------
-    # CONTENT
-    # -------------------------------------------------
+    # =================================================
+    # CLINIC NAME
+    # =================================================
+
+    clinic_name = getattr(
+        receipt,
+        "clinic_name",
+        "Vennova Clinic"
+    )
+
+    doctor_name = getattr(
+        receipt,
+        "doctor_name",
+        "Doctor"
+    )
 
     c.setFont(
         "Helvetica",
-        12
+        11
     )
+
+    c.drawString(
+        20 * mm,
+        H - 32 * mm,
+        clinic_name
+    )
+
+    c.drawString(
+        20 * mm,
+        H - 39 * mm,
+        f"Dr. {doctor_name}"
+    )
+
+    # =================================================
+    # CARD
+    # =================================================
+
+    c.setFillColor(LIGHT)
+
+    c.roundRect(
+        15 * mm,
+        H - 170 * mm,
+        W - 30 * mm,
+        95 * mm,
+        6 * mm,
+        fill=1,
+        stroke=0
+    )
+
+    # =================================================
+    # RECEIPT INFO
+    # =================================================
 
     patient_name = getattr(
         receipt,
@@ -265,49 +388,148 @@ def generate_receipt_pdf(receipt):
         "CASH"
     )
 
-    date = getattr(
+    visit_date = getattr(
         receipt,
-        "date",
+        "visit_date",
         ""
     )
 
+    receipt_no = getattr(
+        receipt,
+        "receipt_no",
+        ""
+    )
+
+    c.setFillColor(DARK)
+
+    c.setFont(
+        "Helvetica-Bold",
+        13
+    )
+
+    y = H - 90 * mm
+
     c.drawString(
-        80,
-        750,
-        f"Patient: {patient_name}"
+        25 * mm,
+        y,
+        f"Receipt No: {receipt_no}"
+    )
+
+    y -= 12 * mm
+
+    c.setFont(
+        "Helvetica",
+        12
     )
 
     c.drawString(
-        80,
-        725,
-        f"Amount: ₹{amount}"
+        25 * mm,
+        y,
+        f"Patient Name: {patient_name}"
     )
 
+    y -= 10 * mm
+
     c.drawString(
-        80,
-        700,
+        25 * mm,
+        y,
+        f"Amount Paid: ₹{amount}"
+    )
+
+    y -= 10 * mm
+
+    c.drawString(
+        25 * mm,
+        y,
         f"Payment Mode: {payment_mode}"
     )
 
+    y -= 10 * mm
+
     c.drawString(
-        80,
-        675,
-        f"Date: {date}"
+        25 * mm,
+        y,
+        f"Visit Date: {visit_date}"
     )
 
-    # -------------------------------------------------
-    # FOOTER
-    # -------------------------------------------------
+    # =================================================
+    # PAYMENT BADGE
+    # =================================================
+
+    c.setFillColor(SECONDARY)
+
+    c.roundRect(
+        W - 65 * mm,
+        H - 105 * mm,
+        35 * mm,
+        12 * mm,
+        3 * mm,
+        fill=1,
+        stroke=0
+    )
+
+    c.setFillColor(colors.white)
 
     c.setFont(
-        "Helvetica-Oblique",
+        "Helvetica-Bold",
+        10
+    )
+
+    c.drawCentredString(
+        W - 47 * mm,
+        H - 98 * mm,
+        "PAID"
+    )
+
+    signature = _load_image(
+        getattr(receipt, "signature_url", None)
+    )
+
+    if signature:
+
+        try:
+
+            c.drawImage(
+                signature,
+                W - 60 * mm,
+                25 * mm,
+                width=35 * mm,
+                height=18 * mm,
+                preserveAspectRatio=True,
+                mask="auto"
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                f"Receipt signature error: {e}"
+            )
+
+    # =================================================
+    # FOOTER
+    # =================================================
+
+    c.setFillColor(colors.HexColor("#64748b"))
+
+    c.setFont(
+        "Helvetica",
         9
     )
 
-    c.drawString(
-        80,
-        620,
-        "Generated by Vennova Clinic OS"
+    c.drawCentredString(
+        W / 2,
+        18 * mm,
+        "Digitally generated receipt"
+    )
+
+    c.drawCentredString(
+        W / 2,
+        12 * mm,
+        getattr(
+            receipt,
+            "footer_text",
+            "Powered by Vennova Clinic OS"
+        )
     )
 
     c.save()
@@ -317,6 +539,7 @@ def generate_receipt_pdf(receipt):
     buffer.close()
 
     return pdf
+
 
 
 # =====================================================

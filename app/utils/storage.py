@@ -65,9 +65,15 @@ def upload_pdf(
     # UPLOAD TO SUPABASE STORAGE
     # =================================================
 
+    bucket_name = (
+        "receipts-private"
+        if folder == "receipts"
+        else "prescriptions-private"
+    )
+
     client.storage.from_(
 
-        "prescriptions-private"
+        bucket_name
 
     ).upload(
 
@@ -86,7 +92,7 @@ def upload_pdf(
 
     signed = client.storage.from_(
 
-        "prescriptions-private"
+        bucket_name
 
     ).create_signed_url(
 

@@ -39,3 +39,9 @@ class ReceiptData(BaseModel):
     amount:           float
     payment_mode:     str
     receipt_no:       str
+
+    logo_url: str | None = None
+    signature_url: str | None = None
+    primary_color: str | None = "#2563eb"
+    secondary_color: str | None = "#14b8a6"
+    footer_text: str | None = None

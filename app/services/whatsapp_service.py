@@ -223,7 +223,11 @@ async def send_followup_reminder(
 
     reminder_date: str = "",
 
-    doctor_name: str = ""
+    doctor_name: str = "",
+
+    clinic_phone: str = "",
+
+    language: str = "en"
 ):
 
     formatted_phone = normalize_phone(phone)
@@ -292,7 +296,9 @@ async def send_thankyou_message(
 
     doctor_name: str = "",
 
-    clinic_phone: str = ""
+    clinic_phone: str = "",
+
+    language: str = "en"
 ):
 
     message = f"""
@@ -325,7 +331,13 @@ async def send_visit_thank_you(
 
     patient_name: str,
 
-    clinic_name: str
+    clinic_name: str,
+
+    doctor_name: str = "",
+
+    clinic_phone: str = "",
+
+    language: str = "en"
 ):
 
     message = f"""

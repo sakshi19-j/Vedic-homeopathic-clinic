@@ -229,6 +229,12 @@ def generate_receipt(
             else "CASH"
         ),
 
+        logo_url=clinic.logo_url,
+        signature_url=clinic.signature_url,
+        primary_color=clinic.primary_color,
+        secondary_color=clinic.secondary_color,
+        footer_text=clinic.footer_text,
+
         receipt_no=receipt_no
     )
 
@@ -236,7 +242,7 @@ def generate_receipt(
     # GENERATE PDF
     # =================================================
 
-    pdf_path = generate_receipt_pdf(
+    pdf_bytes = generate_receipt_pdf(
         receipt_data
     )
 
@@ -245,7 +251,7 @@ def generate_receipt(
     # =================================================
 
     pdf_url = upload_pdf(
-        pdf_path,
+        pdf_bytes,
         folder="receipts"
     )
 
