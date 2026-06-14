@@ -347,7 +347,7 @@ def generate_receipt_pdf(receipt):
     c.drawString(
         20 * mm,
         H - 39 * mm,
-        f"Dr. {doctor_name}"
+        doctor_name
     )
 
     # =================================================

@@ -263,10 +263,6 @@ async def send_followup_reminder(
                         {
                             "type": "text",
                             "text": reminder_date
-                        },
-                        {
-                            "type": "text",
-                            "text": followup_type
                         }
                     ]
                 }

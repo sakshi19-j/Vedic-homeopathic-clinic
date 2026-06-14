@@ -489,7 +489,6 @@ async def send_birthday(
     return await send_birthday_message(
         phone        = patient.phone_mobile,
         patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
-        doctor_name  = clinic.doctor_name if clinic else "Doctor",
         clinic_name  = clinic.name        if clinic else "Clinic",
         language     = patient.language_pref or "en"
     )

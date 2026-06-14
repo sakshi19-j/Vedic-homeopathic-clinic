@@ -13,7 +13,9 @@ from app.models.patient import Patient
 from app.models.clinic import Clinic
 
 from app.services.pdf_service import generate_prescription_pdf
-from app.services.whatsapp_service import send_text_message
+from app.services.whatsapp_service import (
+    send_prescription_message
+)
 from app.utils.storage import upload_pdf
 
 logger = logging.getLogger(__name__)
@@ -400,24 +402,18 @@ def generate_prescription(
 
         if patient.phone_mobile:
 
-            msg = (
-
-                f"Your prescription is ready:\n\n"
-                f"{secure_url}"
-            )
-
             try:
 
                 loop = asyncio.get_running_loop()
 
                 loop.create_task(
 
-                    send_text_message(
-                        patient.phone_mobile,
-                        msg,
-                        clinic_id=str(clinic_id),
-                        patient_id=str(patient.id),
-                        trigger="prescription_generated"
+                    send_prescription_message(
+                        phone=patient.phone_mobile,
+                        patient_name=patient_dict["name"],
+                        clinic_name=clinic.name,
+                        prescription_url=secure_url,
+                        support_phone=clinic.phone or "9999999999"
                     )
                 )
 
@@ -425,12 +421,12 @@ def generate_prescription(
 
                 asyncio.run(
 
-                    send_text_message(
-                        patient.phone_mobile,
-                        msg,
-                        clinic_id=str(clinic_id),
-                        patient_id=str(patient.id),
-                        trigger="prescription_generated"
+                   send_prescription_message(
+                        phone=patient.phone_mobile,
+                        patient_name=patient_dict["name"],
+                        clinic_name=clinic.name,
+                        prescription_url=secure_url,
+                        support_phone=clinic.phone or "9999999999"
                     )
                 )
 
