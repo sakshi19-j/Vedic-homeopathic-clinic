@@ -522,15 +522,24 @@ def generate_receipt_pdf(receipt):
         "Digitally generated receipt"
     )
 
+    footer_text = getattr(
+        receipt,
+        "footer_text",
+        None
+    )
+
+    if not footer_text:
+
+        footer_text = (
+            "Powered by Vennova Clinic OS"
+        )
+
     c.drawCentredString(
         W / 2,
         12 * mm,
-        getattr(
-            receipt,
-            "footer_text",
-            "Powered by Vennova Clinic OS"
-        )
+        str(footer_text)
     )
+
 
     c.save()
 

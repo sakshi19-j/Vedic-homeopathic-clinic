@@ -223,6 +223,8 @@ async def send_followup_reminder(
 
     reminder_date: str = "",
 
+    followup_type: str = "",
+
     doctor_name: str = "",
 
     clinic_phone: str = "",
@@ -261,6 +263,10 @@ async def send_followup_reminder(
                         {
                             "type": "text",
                             "text": reminder_date
+                        },
+                        {
+                            "type": "text",
+                            "text": followup_type
                         }
                     ]
                 }
@@ -301,25 +307,47 @@ async def send_thankyou_message(
     language: str = "en"
 ):
 
-    message = f"""
-Dear {patient_name},
+    formatted_phone = normalize_phone(phone)
 
-Thank you for visiting {clinic_name}.
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-We appreciate your trust.
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "visit_thankyou",
+            "language": {
+                "code": language
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient_name
+                        },
+                        {
+                            "type": "text",
+                            "text": clinic_name
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
-Get well soon.
-
-- Team Vennova
-"""
-
-    return await send_text_message(
-
-        phone=phone,
-
-        message=message
+    response = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json=payload
     )
 
+    return response.json()
 
 # =====================================================
 # VISIT THANK YOU
@@ -340,23 +368,20 @@ async def send_visit_thank_you(
     language: str = "en"
 ):
 
-    message = f"""
-Dear {patient_name},
-
-Thank you for visiting {clinic_name}.
-
-We wish you good health.
-
-- Team Vennova
-"""
-
-    return await send_text_message(
+    return await send_thankyou_message(
 
         phone=phone,
 
-        message=message
-    )
+        patient_name=patient_name,
 
+        clinic_name=clinic_name,
+
+        doctor_name=doctor_name,
+
+        clinic_phone=clinic_phone,
+
+        language=language
+    )
 
 # =====================================================
 # BIRTHDAY MESSAGE
@@ -370,26 +395,46 @@ async def send_birthday_message(
 
     clinic_name: str,
 
-    doctor_name: str = "",
-
     language: str = "en"
 ):
 
-    message = f"""
-Happy Birthday {patient_name} 🎉
+    formatted_phone = normalize_phone(phone)
 
-Wishing you happiness,
-health and prosperity.
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-- {clinic_name}
-"""
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "birthday_message",
+            "language": {
+                "code": language
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient_name
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
-    return await send_text_message(
-
-        phone=phone,
-
-        message=message
+    response = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json=payload
     )
+
+    return response.json()
 
 # =====================================================
 # BILLING RECEIPT MESSAGE
