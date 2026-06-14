@@ -153,28 +153,56 @@ async def send_prescription_message(
     support_phone: str = ""
 ):
 
-    message = f"""
-Hi {patient_name},
+    formatted_phone = normalize_phone(phone)
 
-Your prescription from {clinic_name} is ready.
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-View Prescription:
-{prescription_url}
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "prescription_ready",
+            "language": {
+                "code": "en"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient_name
+                        },
+                        {
+                            "type": "text",
+                            "text": clinic_name
+                        },
+                        {
+                            "type": "text",
+                            "text": prescription_url
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
-Please save this prescription for future reference.
-
-For help contact:
-{support_phone}
-
-- Team Vennova
-"""
-
-    return await send_text_message(
-
-        phone=phone,
-
-        message=message
+    response = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json=payload
     )
+
+    data = response.json()
+
+    return {
+        "status": "sent" if response.status_code in [200, 201] else "failed",
+        "response": data
+    }
 
 
 # =====================================================
@@ -192,27 +220,56 @@ async def send_followup_reminder(
     reminder_date: str = ""
 ):
 
-    message = f"""
-Hi {patient_name},
+    formatted_phone = normalize_phone(phone)
 
-This is a reminder from {clinic_name}.
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-Your follow-up consultation is scheduled.
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "followup_reminder",
+            "language": {
+                "code": "en"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient_name
+                        },
+                        {
+                            "type": "text",
+                            "text": clinic_name
+                        },
+                        {
+                            "type": "text",
+                            "text": reminder_date
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
-Date:
-{reminder_date}
-
-Please reply if you need help.
-
-- Team Vennova
-"""
-
-    return await send_text_message(
-
-        phone=phone,
-
-        message=message
+    response = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json=payload
     )
+
+    data = response.json()
+
+    return {
+        "status": "sent" if response.status_code in [200, 201] else "failed",
+        "response": data
+    }
 
 
 # =====================================================
@@ -324,22 +381,53 @@ async def send_billing_receipt(
 
 ):
 
-    message = f"""
-Hi {patient_name},
+    formatted_phone = normalize_phone(phone)
 
-Your payment receipt from {clinic_name} is ready.
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-Download Receipt:
-{receipt_url}
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "billing_receipt",
+            "language": {
+                "code": "en"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient_name
+                        },
+                        {
+                            "type": "text",
+                            "text": clinic_name
+                        },
+                        {
+                            "type": "text",
+                            "text": receipt_url
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 
-Thank you for visiting us.
-
-- Team Vennova
-"""
-
-    return await send_text_message(
-
-        phone=phone,
-
-        message=message
+    response = requests.post(
+        WHATSAPP_API_URL,
+        headers=headers,
+        json=payload
     )
+
+    data = response.json()
+
+    return {
+        "status": "sent" if response.status_code in [200, 201] else "failed",
+        "response": data
+    }
