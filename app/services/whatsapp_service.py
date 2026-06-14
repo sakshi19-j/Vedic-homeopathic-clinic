@@ -184,6 +184,10 @@ async def send_prescription_message(
                         {
                             "type": "text",
                             "text": prescription_url
+                        },
+                        {
+                            "type": "text",
+                            "text": support_phone
                         }
                     ]
                 }
@@ -370,15 +374,11 @@ health and prosperity.
 # =====================================================
 
 async def send_billing_receipt(
-
-    phone: str,
-
-    patient_name: str,
-
-    clinic_name: str,
-
-    receipt_url: str
-
+        phone: str,
+        patient_name: str,
+        clinic_name: str,
+        receipt_url: str,
+        amount: str
 ):
 
     formatted_phone = normalize_phone(phone)
@@ -412,6 +412,10 @@ async def send_billing_receipt(
                         {
                             "type": "text",
                             "text": receipt_url
+                        },
+                        {
+                            "type": "text",
+                            "text": amount
                         }
                     ]
                 }

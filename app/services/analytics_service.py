@@ -5,10 +5,6 @@ from datetime import datetime, timedelta
 from app.models.visit import Visit, PaymentStatus
 from app.models.patient import Patient
 from app.models.reminder import (
-    WhatsAppLog,
-    DeliveryStatus
-)
-from app.models.reminder import (
     FollowUp,
     FollowUpStatus,
     WhatsAppLog,
@@ -220,7 +216,7 @@ def followups_due_today(
         if (
             f.due_date
             and
-            f.due_date.date() <= today
+            f.due_date <= today
         )
     ]
 

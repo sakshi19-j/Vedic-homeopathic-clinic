@@ -315,16 +315,13 @@ def generate_receipt(
 
             whatsapp_result = loop.run_until_complete(
 
-                send_billing_receipt(
-
-                    phone=patient.phone_mobile,
-
-                    patient_name=receipt_data.patient_name,
-
-                    clinic_name=receipt_data.clinic_name,
-
-                    receipt_url=pdf_url
-                )
+               send_billing_receipt(
+                phone=patient.phone_mobile,
+                patient_name=receipt_data.patient_name,
+                clinic_name=receipt_data.clinic_name,
+                receipt_url=pdf_url,
+                amount=str(receipt_data.amount)
+            )
             )
 
             loop.close()
