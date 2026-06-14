@@ -281,12 +281,10 @@ async def send_followup_reminder(
 # =====================================================
 
 async def send_thankyou_message(
-
-    phone: str,
-
-    patient_name: str,
-
-    clinic_name: str
+        phone: str,
+        patient_name: str,
+        clinic_name: str,
+        doctor_name: str = ""
 ):
 
     message = f"""
@@ -345,12 +343,10 @@ We wish you good health.
 # =====================================================
 
 async def send_birthday_message(
-
-    phone: str,
-
-    patient_name: str,
-
-    clinic_name: str
+        phone: str,
+        patient_name: str,
+        clinic_name: str,
+        doctor_name: str = ""
 ):
 
     message = f"""
