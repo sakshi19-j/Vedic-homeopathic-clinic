@@ -254,15 +254,15 @@ async def send_followup_reminder(
                     "parameters": [
                         {
                             "type": "text",
-                            "text": patient_name
+                            "text": patient_name or "Patient"
                         },
                         {
                             "type": "text",
-                            "text": clinic_name
+                            "text": clinic_name or "Clinic"
                         },
                         {
                             "type": "text",
-                            "text": reminder_date
+                            "text": str(reminder_date or "Tomorrow")
                         }
                     ]
                 }
