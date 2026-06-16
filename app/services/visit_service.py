@@ -84,7 +84,6 @@ def create_visit(
         clinic_id=clinic_id,
         patient_id=visit.patient_id,
         visit_id=visit.id,
-        doctor_id=visit.doctor_id,
         status="WAITING"
     )
 
