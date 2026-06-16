@@ -74,6 +74,23 @@ def create_visit(
 
     db.refresh(visit)
 
+    # =====================================================
+    # AUTO ADD TO QUEUE
+    # =====================================================
+
+    from app.models.queue import Queue
+
+    queue_entry = Queue(
+        clinic_id=clinic_id,
+        patient_id=visit.patient_id,
+        visit_id=visit.id,
+        doctor_id=visit.doctor_id,
+        status="WAITING"
+    )
+
+    db.add(queue_entry)
+    db.commit()
+
     return visit
 
 def _get_visit(
