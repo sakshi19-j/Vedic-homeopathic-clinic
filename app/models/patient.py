@@ -61,13 +61,19 @@ class Patient(BaseModel):
 
     referred_by_name = Column(String, nullable=True)
     referred_by_contact = Column(String, nullable=True)
-    
+
     anniversary = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
+    language_pref = Column(String, default="en")
 
+    expected_followup_days = Column(Integer, default=7)
+
+    patient_type = Column(
+        SQLEnum(PatientType),
+        default=PatientType.HOMEOPATHY
+    )
     # 🔥 Growth Engine Fields
     last_visit_date = Column(DateTime, nullable=True)
-    expected_followup_days = Column(Integer, default=7)
     total_visits = Column(Integer, default=0)
     total_spent = Column(Numeric(10, 2), default=0)
     patient_value_score = Column(Numeric(5, 2), default=0)
