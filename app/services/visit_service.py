@@ -373,18 +373,11 @@ def close_visit(
         FollowUpStatus
     )
 
-    # visit completed
-    visit.visit_status = VisitStatus.BILLING
-
     from app.models.queue import Queue
 
     queue_entry = db.query(Queue).filter(
         Queue.visit_id == visit.id
     ).first()
-
-    if queue_entry:
-        queue_entry.status = "COMPLETED"
-        queue_entry.end_time = datetime.utcnow()
 
     # keep pending until billing
     visit.payment_status = PaymentStatus.PENDING
@@ -474,16 +467,20 @@ def close_visit(
             pass
 
     # =====================================================
-    # CREATE FOLLOWUP
+    # CREATE FOLLOWUP FROM DOCTOR INPUT
     # =====================================================
 
     existing_followup = db.query(FollowUp).filter(
         FollowUp.visit_id == visit.id
     ).first()
 
-    if not existing_followup:
+    if not existing_followup and data.followup_date:
 
-        from datetime import timedelta
+        from datetime import datetime
+
+        followup_date = datetime.fromisoformat(
+            data.followup_date
+        )
 
         followup = FollowUp(
 
@@ -493,10 +490,15 @@ def close_visit(
 
             visit_id=visit.id,
 
-            due_date=datetime.utcnow() + timedelta(days=7),
+            due_date=followup_date,
+
+            type=(
+                data.followup_type
+                if data.followup_type
+                else "CUSTOM"
+            ),
 
             status=FollowUpStatus.PENDING,
-
         )
 
         db.add(followup)
@@ -508,6 +510,29 @@ def close_visit(
     db.commit()
 
     db.refresh(visit)
+
+    # =====================================================
+    # AUTO GENERATE PRESCRIPTION
+    # =====================================================
+
+    try:
+
+        from app.services.prescription_service import (
+            generate_prescription
+        )
+
+        generate_prescription(
+            db=db,
+            visit_id=visit.id,
+            clinic_id=visit.clinic_id
+        )
+
+    except Exception as e:
+
+        print(
+            "Prescription generation failed:",
+            str(e)
+        )
 
     # =====================================================
     # SEND THANK YOU MESSAGE

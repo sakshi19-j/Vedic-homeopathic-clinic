@@ -109,6 +109,11 @@ class CloseVisitRequest(BaseModel):
 
     followup_channel: Optional[str] = "WHATSAPP"
 
+    followup_date: Optional[str] = None
+
+    followup_type: Optional[str] = None
+
+
 
 # =====================================================
 # RESPONSE

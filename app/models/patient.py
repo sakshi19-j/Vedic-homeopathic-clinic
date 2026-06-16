@@ -61,9 +61,7 @@ class Patient(BaseModel):
 
     referred_by_name = Column(String, nullable=True)
     referred_by_contact = Column(String, nullable=True)
-
-    language_pref = Column(String, default="en")
-    patient_type = Column(SQLEnum(PatientType), default=PatientType.HOMEOPATHY)
+    
     anniversary = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
 

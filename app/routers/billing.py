@@ -15,7 +15,13 @@ from app.middleware.auth_middleware import (
 )
 
 from app.models.user import User
+from app.models.visit import (
+    Visit,
+    VisitStatus,
+    PaymentStatus
+)
 
+from app.models.queue import Queue
 
 router = APIRouter(
     prefix="/billing",
@@ -306,6 +312,7 @@ def get_pending_payments(
             )
         })
 
+
     return {
         "total": len(result),
 
@@ -314,4 +321,70 @@ def get_pending_payments(
         ),
 
         "pending_visits": result
+    }
+
+# =========================================================
+# COLLECT PAYMENT
+# =========================================================
+
+@router.post("/collect/{visit_id}")
+def collect_payment(
+    visit_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == current_user.clinic_id
+    ).first()
+
+    if not visit:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Visit not found"
+        )
+
+    # ============================================
+    # MARK PAYMENT PAID
+    # ============================================
+
+    visit.payment_status = PaymentStatus.PAID
+
+    visit.visit_status = VisitStatus.COMPLETED
+
+    visit.closed_at = datetime.utcnow()
+
+    # ============================================
+    # REMOVE FROM ACTIVE QUEUE
+    # ============================================
+
+    queue_entry = db.query(Queue).filter(
+        Queue.visit_id == visit.id
+    ).first()
+
+    if queue_entry:
+
+        queue_entry.status = "COMPLETED"
+
+    db.commit()
+
+    # ============================================
+    # GENERATE RECEIPT + SEND WHATSAPP
+    # ============================================
+
+    receipt = billing_service.generate_receipt(
+        db=db,
+        visit_id=visit.id,
+        clinic_id=current_user.clinic_id
+    )
+
+    return {
+
+        "success": True,
+
+        "message": "Payment collected successfully",
+
+        "receipt": receipt
     }
