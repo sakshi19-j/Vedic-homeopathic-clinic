@@ -80,14 +80,20 @@ def create_visit(
 
     from app.models.queue import Queue
 
-    queue_entry = Queue(
-        clinic_id=clinic_id,
-        patient_id=visit.patient_id,
-        visit_id=visit.id,
-        status="WAITING"
+    queue_entry = (
+        db.query(Queue)
+        .filter(
+            Queue.patient_id == visit.patient_id,
+            Queue.clinic_id == clinic_id,
+            Queue.status.in_(["WAITING", "IN_TREATMENT"])
+        )
+        .order_by(Queue.created_at.desc())
+        .first()
     )
 
-    db.add(queue_entry)
+    if queue_entry:
+        queue_entry.visit_id = visit.id
+
     db.commit()
 
     return visit
