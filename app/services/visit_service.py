@@ -403,6 +403,8 @@ def close_visit(
     # keep pending until billing
     visit.payment_status = PaymentStatus.PENDING
 
+    visit.visit_status = VisitStatus.BILLING
+
     visit.closed_at = datetime.utcnow()
 
     # =====================================================
