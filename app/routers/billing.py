@@ -28,6 +28,10 @@ router = APIRouter(
     tags=["Billing"]
 )
 
+from pydantic import BaseModel
+
+class CollectPaymentRequest(BaseModel):
+    payment_mode: str
 
 # =========================================================
 # Get Payment Details
@@ -330,6 +334,7 @@ def get_pending_payments(
 @router.post("/collect/{visit_id}")
 def collect_payment(
     visit_id: str,
+    payload: CollectPaymentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
@@ -351,7 +356,7 @@ def collect_payment(
     # ============================================
 
     visit.payment_status = PaymentStatus.PAID
-
+    visit.payment_mode = payload.payment_mode
     visit.visit_status = VisitStatus.COMPLETED
 
     visit.closed_at = datetime.utcnow()

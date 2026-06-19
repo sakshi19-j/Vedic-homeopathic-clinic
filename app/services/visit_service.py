@@ -77,7 +77,6 @@ def create_visit(
     # =====================================================
     # AUTO ADD TO QUEUE
     # =====================================================
-
     from app.models.queue import Queue
 
     queue_entry = (
