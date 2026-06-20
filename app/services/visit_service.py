@@ -19,6 +19,8 @@ from app.services.whatsapp_service import (
     send_visit_thank_you
 )
 
+from app.models.reminder import FollowUpType
+
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
@@ -511,11 +513,7 @@ def close_visit(
 
             due_date=followup_date,
 
-            type=(
-                data.followup_type
-                if data.followup_type
-                else "CUSTOM"
-            ),
+            type=FollowUpType.CUSTOM,
 
             status=FollowUpStatus.PENDING,
         )
@@ -572,7 +570,17 @@ def close_visit(
             loop = asyncio.new_event_loop()
 
             asyncio.set_event_loop(loop)
+            from app.models.clinic import Clinic
 
+            clinic = db.query(Clinic).filter(
+                Clinic.id == visit.clinic_id
+            ).first()
+
+            clinic_name = (
+                clinic.name
+                if clinic and clinic.name
+                else "Clinic"
+)
             loop.run_until_complete(
 
                 send_visit_thank_you(
@@ -584,7 +592,7 @@ def close_visit(
                         f"{patient.last_name or ''}"
                     ).strip(),
 
-                    clinic_name="Vennova Clinic"
+                    clinic_name=clinic_name
                 )
             )
 

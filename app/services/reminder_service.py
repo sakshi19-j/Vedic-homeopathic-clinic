@@ -46,92 +46,15 @@ def get_template_key(followup_type: FollowUpType) -> str:
 # =====================================================
 
 def schedule_followups_after_visit(
-    db: Session,
-    visit_id: str,
-    patient_id: str,
-    clinic_id: str
-) -> dict:
-
-    try:
-
-        today = datetime.now(IST).date()
-
-        followup_schedule = [
-            (FollowUpType.THREE_DAY, 3),
-            (FollowUpType.SEVEN_DAY, 7),
-            (FollowUpType.FIFTEEN_DAY, 15),
-        ]
-
-        created = []
-
-        for ftype, days in followup_schedule:
-
-            due_date = today + timedelta(days=days)
-
-            existing = db.query(FollowUp).filter(
-                FollowUp.visit_id == visit_id,
-                FollowUp.type == ftype,
-                FollowUp.clinic_id == clinic_id,
-                FollowUp.status == FollowUpStatus.PENDING
-            ).first()
-
-            if existing:
-
-                logger.info(
-                    f"Follow-up {ftype.value} already exists "
-                    f"for visit {visit_id}"
-                )
-
-                continue
-
-            followup = FollowUp(
-                clinic_id  = clinic_id,
-                patient_id = patient_id,
-                visit_id   = visit_id,
-                type       = ftype,
-                due_date   = datetime(
-                    due_date.year,
-                    due_date.month,
-                    due_date.day,
-                    9,
-                    30
-                ),
-                status  = FollowUpStatus.PENDING,
-                channel = ReminderChannel.WHATSAPP,
-            )
-
-            db.add(followup)
-
-            created.append({
-                "type": ftype.value,
-                "due_date": str(due_date)
-            })
-
-        db.commit()
-
-        logger.info(
-            f"Scheduled {len(created)} follow-ups "
-            f"for patient={patient_id}"
-        )
-
-        return {
-            "scheduled": len(created),
-            "followups": created
-        }
-
-    except Exception as e:
-
-        logger.error(
-            f"schedule_followups_after_visit failed: {e}"
-        )
-
-        db.rollback()
-
-        return {
-            "scheduled": 0,
-            "followups": [],
-            "error": str(e)
-        }
+    db,
+    visit_id,
+    patient_id,
+    clinic_id
+):
+    return {
+        "scheduled": 0,
+        "followups": []
+    }
 
 
 # =====================================================

@@ -205,8 +205,7 @@ def followups_due_today(
     followups = db.query(
         FollowUp
     ).filter(
-        FollowUp.clinic_id == clinic_id,
-        FollowUp.status == FollowUpStatus.PENDING
+        FollowUp.clinic_id == clinic_id
     ).all()
 
     due_today = [
