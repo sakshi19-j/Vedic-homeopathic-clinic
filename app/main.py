@@ -141,7 +141,6 @@ app.include_router(subscription_router)
 app.include_router(audit_router)
 app.include_router(medicines.router)
 app.include_router(doctor_profile.router)
-app.include_router(imports.router)
 app.include_router(exports.router)
 # =====================================================
 # STARTUP
