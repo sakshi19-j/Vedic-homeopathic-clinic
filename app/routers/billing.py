@@ -104,27 +104,22 @@ def download_receipt(
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
-    """
-    Redirect user to Supabase public receipt URL.
-    Frontend can open/download directly.
-    """
 
-    result = billing_service.generate_receipt(
+    payment = billing_service.get_payment_by_visit(
         db,
         visit_id,
         current_user.clinic_id
     )
 
-    pdf_url = result.get("pdf_url")
+    if not payment.receipt_url:
 
-    if not pdf_url:
         raise HTTPException(
             status_code=404,
-            detail="Receipt URL not found"
+            detail="Receipt not generated"
         )
 
     return RedirectResponse(
-        url=pdf_url
+        url=payment.receipt_url
     )
 
 
