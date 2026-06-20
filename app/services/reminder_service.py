@@ -49,11 +49,37 @@ def schedule_followups_after_visit(
     db,
     visit_id,
     patient_id,
-    clinic_id
+    clinic_id,
+    followup_date
 ):
+
+    followups_created = []
+
+    reminder_3_day = followup_date - timedelta(days=3)
+
+    reminder_1_day = followup_date - timedelta(days=1)
+
+    for due in [reminder_3_day, reminder_1_day]:
+
+        followup = FollowUp(
+            clinic_id=clinic_id,
+            patient_id=patient_id,
+            visit_id=visit_id,
+            due_date=due,
+            type=FollowUpType.CUSTOM,
+            status=FollowUpStatus.PENDING,
+            channel=ReminderChannel.WHATSAPP
+        )
+
+        db.add(followup)
+
+        followups_created.append(str(due))
+
+    db.commit()
+
     return {
-        "scheduled": 0,
-        "followups": []
+        "scheduled": 2,
+        "followups": followups_created
     }
 
 

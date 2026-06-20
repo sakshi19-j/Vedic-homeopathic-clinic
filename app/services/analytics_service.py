@@ -205,7 +205,8 @@ def followups_due_today(
     followups = db.query(
         FollowUp
     ).filter(
-        FollowUp.clinic_id == clinic_id
+        FollowUp.clinic_id == clinic_id,
+        FollowUp.status == FollowUpStatus.PENDING
     ).all()
 
     due_today = [
@@ -244,28 +245,40 @@ def top_patients(
     limit: int = 5
 ):
 
-    patients = db.query(Patient).filter(
-        Patient.clinic_id == clinic_id
-    ).limit(limit).all()
+    rows = (
+        db.query(
+            Patient.id,
+            Patient.first_name,
+            Patient.last_name,
+            func.count(Visit.id).label("visits")
+        )
+        .join(
+            Visit,
+            Visit.patient_id == Patient.id
+        )
+        .filter(
+            Patient.clinic_id == clinic_id
+        )
+        .group_by(
+            Patient.id,
+            Patient.first_name,
+            Patient.last_name
+        )
+        .order_by(
+            func.count(Visit.id).desc()
+        )
+        .limit(limit)
+        .all()
+    )
 
-    result = []
-
-    for patient in patients:
-
-        visits = db.query(Visit).filter(
-            Visit.patient_id == patient.id
-        ).count()
-
-        result.append({
-            "patient_id": patient.id,
-            "name": (
-                f"{patient.first_name} "
-                f"{patient.last_name or ''}"
-            ).strip(),
-            "visits": visits
-        })
-
-    return result
+    return [
+        {
+            "patient_id": row.id,
+            "name": f"{row.first_name} {row.last_name or ''}".strip(),
+            "visits": row.visits
+        }
+        for row in rows
+    ]
 
 
 # ─────────────────────────────────────────────
