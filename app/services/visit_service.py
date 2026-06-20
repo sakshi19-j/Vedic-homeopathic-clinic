@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.models.visit import (
     Visit,
@@ -496,8 +496,6 @@ def close_visit(
     ).first()
 
     if not existing_followup and data.followup_date:
-
-        from datetime import datetime
 
         followup_date = datetime.fromisoformat(
             data.followup_date
