@@ -154,10 +154,11 @@ def get_todays_queue(
         and_(
             Queue.clinic_id == clinic_id,
             Queue.queue_date == today,
-            Queue.status.in_([
+           Queue.status.in_([
                 "WAITING",
                 "IN_TREATMENT",
-                "BILLING_PENDING"
+                "BILLING_PENDING",
+                "COMPLETED"
             ])
          )
     ).order_by(
@@ -180,9 +181,8 @@ def get_todays_queue(
             and str(e.status) == "WAITING"
         ):
 
-            diff = (
-                now_ist()
-                - e.check_in_time.replace(tzinfo=IST)
+            diff = now_ist() - IST.localize(
+                e.check_in_time
             )
 
             wait_mins = int(

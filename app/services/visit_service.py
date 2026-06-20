@@ -379,9 +379,7 @@ def close_visit(
 
     visit.fee = data.fee
 
-    visit.payment_mode = (
-        data.payment_mode
-    )
+    visit.payment_mode = None
 
     # =====================================================
     # FINAL VISIT LIFECYCLE UPDATE
