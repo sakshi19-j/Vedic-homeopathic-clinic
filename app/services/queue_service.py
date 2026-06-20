@@ -181,9 +181,12 @@ def get_todays_queue(
             and str(e.status) == "WAITING"
         ):
 
-            diff = now_ist() - IST.localize(
-                e.check_in_time
-            )
+            checkin = e.check_in_time
+
+            if checkin.tzinfo is None:
+                checkin = IST.localize(checkin)
+
+            diff = now_ist() - checkin
 
             wait_mins = int(
                 diff.total_seconds() / 60
