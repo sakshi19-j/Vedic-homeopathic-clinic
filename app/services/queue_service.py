@@ -353,6 +353,33 @@ def call_next(
         ).strip() if patient else "Unknown"
     }
 
+# =========================================================
+# Mark Done
+# =========================================================
+
+def mark_done(
+    db: Session,
+    queue_id: str,
+    clinic_id: str
+) -> dict:
+
+    entry = _get_entry(
+        db,
+        queue_id,
+        clinic_id
+    )
+
+    entry.status = "BILLING_PENDING"
+
+    entry.end_time = now_ist()
+
+    db.commit()
+
+    return {
+        "message": "Patient moved to billing",
+        "queue_id": queue_id,
+        "status": "BILLING_PENDING"
+    }
 
 # =========================================================
 # Mark No Show

@@ -62,6 +62,18 @@ def call_next(
     """
     return queue_service.call_next(db, current_user.clinic_id)
 
+@router.post("/{queue_id}/done")
+def mark_done(
+    queue_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+    return queue_service.mark_done(
+        db,
+        queue_id,
+        current_user.clinic_id
+    )
+
 @router.put("/{queue_id}/no-show")
 def no_show(
     queue_id:     str,
