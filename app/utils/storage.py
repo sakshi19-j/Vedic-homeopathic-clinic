@@ -65,11 +65,7 @@ def upload_pdf(
     # UPLOAD TO SUPABASE STORAGE
     # =================================================
 
-    bucket_name = (
-        "receipts-private"
-        if folder == "receipts"
-        else "prescriptions-private"
-    )
+    bucket_name = "clinic-assets"
 
     client.storage.from_(
 

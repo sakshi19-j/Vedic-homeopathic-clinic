@@ -14,7 +14,9 @@ router = APIRouter(
     prefix="/analytics",
     tags=["Analytics"]
 )
-
+from app.middleware.auth_middleware import (
+    receptionist_or_doctor
+)
 
 # ─────────────────────────────────────────────
 # FULL DASHBOARD
@@ -244,4 +246,13 @@ def get_revenue(
         "today":   analytics_service.daily_revenue(db, clinic_id),
         "weekly":  analytics_service.weekly_revenue(db, clinic_id),
         "monthly": analytics_service.monthly_revenue(db, clinic_id),
+    }
+
+@router.get("/dashboard-lite")
+def dashboard_lite(
+    db: Session = Depends(get_db),
+    current_user = Depends(receptionist_or_doctor)
+):
+    return {
+        "message": "dashboard lite"
     }

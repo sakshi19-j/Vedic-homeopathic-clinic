@@ -430,44 +430,55 @@ async def send_single_reminder(
             400,
             "Patient opted out"
         )
+    try:
 
-    result = await send_template_message(
-        phone         = patient.phone_mobile,
-        template_name = get_template_key(followup.type),
-        language = "en_US",
-        components    = [
-            {
-                "type": "body",
-                "parameters": [
-                    {
-                        "type": "text",
-                        "text": patient.first_name
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            clinic.name
-                            if clinic
-                            else "Vedic Homeopathic Clinic"
-                        )
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            followup.due_date.strftime("%d-%m-%Y")
-                            if followup.due_date
-                            else ""
-                        )
-                    },
-                ]
-            }
-        ],
-        db         = db,
-        clinic_id  = clinic_id,
-        patient_id = str(patient.id),
-        trigger    = "manual_send"
-    )
+        result = await send_template_message(
+            phone=patient.phone_mobile,
+            template_name=get_template_key(followup.type),
+            language="en_US",
+            components=[
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": patient.first_name
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                clinic.name
+                                if clinic
+                                else "Vedic Homeopathic Clinic"
+                            )
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                followup.due_date.strftime("%d-%m-%Y")
+                                if followup.due_date
+                                else ""
+                            )
+                        }
+                    ]
+                }
+            ],
+            db=db,
+            clinic_id=clinic_id,
+            patient_id=str(patient.id),
+            trigger="manual_send"
+        )
 
+    except Exception as e:
+
+        import traceback
+
+        print(traceback.format_exc())
+
+        return {
+            "status": "failed",
+            "error": str(e)
+        }
     if result.get("status") in ("sent", "mocked"):
 
         followup.status   = FollowUpStatus.SENT

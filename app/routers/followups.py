@@ -1,3 +1,14 @@
-GET /followups/today
-GET /followups/missed
-POST /followups/send-reminder/{visit_id}
+from fastapi import APIRouter
+
+router = APIRouter(
+    prefix="/followups",
+    tags=["Followups"]
+)
+
+@router.get("/today")
+def followups_today():
+    return []
+
+@router.get("/upcoming")
+def followups_upcoming():
+    return []

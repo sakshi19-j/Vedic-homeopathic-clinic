@@ -367,3 +367,4 @@ def whatsapp_delivery_rate(
         "pending": pending,
         "delivery_rate_percent": rate
     }
+

@@ -52,6 +52,7 @@ from app.routers.audit import (
 from app.routers import medicines
 from app.routers import doctor_profile
 from app.routers import exports
+from app.routers import followups
 app = FastAPI(
     title="Vennova Clinic Growth Engine API",
     redirect_slashes=False,
@@ -141,6 +142,9 @@ app.include_router(audit_router)
 app.include_router(medicines.router)
 app.include_router(doctor_profile.router)
 app.include_router(exports.router)
+app.include_router(
+    followups.router
+)
 # =====================================================
 # STARTUP
 # =====================================================

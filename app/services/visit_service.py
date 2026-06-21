@@ -197,7 +197,41 @@ def get_visit(
         )
     }
 
+def save_vitals(
+    db,
+    visit_id,
+    clinic_id,
+    data
+):
+    visit = _get_visit(
+        db=db,
+        visit_id=visit_id,
+        clinic_id=clinic_id
+    )
 
+    vitals = db.query(Vitals).filter(
+        Vitals.visit_id == visit.id
+    ).first()
+
+    if not vitals:
+        vitals = Vitals(
+            visit_id=visit.id
+        )
+        db.add(vitals)
+
+    vitals.weight_kg = data.weight_kg
+    vitals.height_cm = data.height_cm
+    vitals.bp_systolic = data.bp_systolic
+    vitals.bp_diastolic = data.bp_diastolic
+    vitals.temperature = data.temperature
+    vitals.pulse_rate = data.pulse_rate
+
+    db.commit()
+
+    return {
+        "message": "Vitals saved",
+        "visit_id": visit.id
+    }
 # =====================================================
 # VISIT WIZARD STATE
 # =====================================================
