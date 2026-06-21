@@ -158,7 +158,8 @@ def get_todays_queue(
                 "WAITING",
                 "IN_TREATMENT",
                 "BILLING_PENDING",
-                "COMPLETED"
+                "COMPLETED",
+                "NO_SHOW"
             ])
          )
     ).order_by(

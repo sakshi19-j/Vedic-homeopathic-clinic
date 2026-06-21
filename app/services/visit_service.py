@@ -20,7 +20,7 @@ from app.services.whatsapp_service import (
 )
 
 from app.models.reminder import FollowUpType
-
+from app.services.reminder_service import schedule_followups
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
@@ -439,6 +439,13 @@ def close_visit(
 
     visit.visit_status = VisitStatus.BILLING
 
+    schedule_followups(
+        db=db,
+        visit_id=visit.id,
+        patient_id=visit.patient_id,
+        clinic_id=visit.clinic_id,
+        disease_type=visit.disease_type
+    )
     visit.closed_at = datetime.utcnow()
 
     # =====================================================
