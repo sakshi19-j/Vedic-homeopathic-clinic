@@ -66,7 +66,7 @@ def schedule_followups(
         # Store clean DATE only
         due_date = (
             now + timedelta(days=days)
-        ).date()
+        )
 
         # -----------------------------------------
         # Followup Type Mapping

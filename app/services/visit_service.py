@@ -20,7 +20,7 @@ from app.services.whatsapp_service import (
 )
 
 from app.models.reminder import FollowUpType
-from app.services.reminder_service import schedule_followups
+from app.services.growth_service import schedule_followups
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
