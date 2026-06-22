@@ -52,9 +52,9 @@ def schedule_followups(
     """
 
     rules = FOLLOWUP_RULES.get(
-        disease_type.lower(),
-        FOLLOWUP_RULES["default"]
-    )
+            (disease_type or "default").lower(),
+            FOLLOWUP_RULES["default"]
+        )
 
     now = datetime.now(IST)
 

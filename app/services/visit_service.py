@@ -444,7 +444,7 @@ def close_visit(
         visit_id=visit.id,
         patient_id=visit.patient_id,
         clinic_id=visit.clinic_id,
-        disease_type=visit.disease_type
+        disease_type=data.disease_type or "default"
     )
     visit.closed_at = datetime.utcnow()
 
