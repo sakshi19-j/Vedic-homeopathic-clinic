@@ -16,10 +16,6 @@ from app.services.prescription_service import (
     generate_prescription
 )
 
-from app.services.whatsapp_service import (
-    send_text_message
-)
-
 from app.middleware.auth_middleware import (
     doctor_only
 )
@@ -168,223 +164,53 @@ async def send_prescription_whatsapp(
 ):
 
     # =================================================
-    # GENERATE PRESCRIPTION
-    # =================================================
-
-    result = generate_prescription(
-
-        db,
-
-        visit_id,
-
-        current_user.clinic_id
-    )
-
-    # =================================================
-    # FETCH VISIT
+    # FETCH PATIENT NAME FOR RESPONSE MESSAGE ONLY
+    # generate_prescription() does its own validation
+    # and already sends the WhatsApp message internally
     # =================================================
 
     visit = db.query(Visit).filter(
-
         Visit.id == visit_id,
-
         Visit.clinic_id == current_user.clinic_id
-
     ).first()
 
     if not visit:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Visit not found"
-        )
-
-    # =================================================
-    # FETCH PATIENT
-    # =================================================
+        raise HTTPException(status_code=404, detail="Visit not found")
 
     patient = db.query(Patient).filter(
-
         Patient.id == visit.patient_id,
-
         Patient.clinic_id == current_user.clinic_id
-
     ).first()
 
     if not patient:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Patient not found"
-        )
-
-    # =================================================
-    # FETCH CLINIC
-    # =================================================
-
-    clinic = db.query(Clinic).filter(
-
-        Clinic.id == current_user.clinic_id
-
-    ).first()
-
-    if not clinic:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Clinic not found"
-        )
-
-    # =================================================
-    # CHECK MOBILE
-    # =================================================
+        raise HTTPException(status_code=404, detail="Patient not found")
 
     if not patient.phone_mobile:
+        raise HTTPException(status_code=400, detail="Patient mobile number missing")
 
+    if getattr(patient, "whatsapp_opted_out", False):
         raise HTTPException(
-
             status_code=400,
-
-            detail="Patient mobile number missing"
+            detail="Patient has opted out from WhatsApp messages"
         )
 
+    patient_name = f"{patient.first_name} {patient.last_name or ''}".strip()
+
     # =================================================
-    # WHATSAPP OPT OUT
+    # GENERATE + SEND (single source of truth — same
+    # function visits.py calls, so PDF + WhatsApp stay
+    # consistent no matter which route is hit)
     # =================================================
 
-    opted_out = getattr(
-
-        patient,
-
-        "whatsapp_opted_out",
-
-        False
+    result = generate_prescription(
+        db,
+        visit_id,
+        current_user.clinic_id
     )
-
-    if opted_out:
-
-        raise HTTPException(
-
-            status_code=400,
-
-            detail=(
-                "Patient has opted out "
-                "from WhatsApp messages"
-            )
-        )
-
-    # =================================================
-    # SECURE URL
-    # =================================================
-
-    secure_url = (
-
-        f"https://rx.vennovahealth.com/rx/"
-        f"{visit.prescription_token}"
-    )
-
-    # =================================================
-    # BUILD MESSAGE
-    # =================================================
-
-    patient_name = (
-
-        f"{patient.first_name} "
-        f"{patient.last_name or ''}"
-
-    ).strip()
-
-    message = (
-
-        f"Hi {patient_name},\n\n"
-
-        f"Your prescription from "
-        f"Dr. {clinic.doctor_name} "
-        f"is ready.\n\n"
-
-        f"📄 Secure Prescription Link:\n\n"
-
-        f"{secure_url}\n\n"
-
-        f"Please save this prescription "
-        f"for future reference.\n\n"
-
-        f"For help contact:\n"
-
-        f"{clinic.phone}\n\n"
-
-        f"- Team Vennova"
-    )
-
-    # =================================================
-    # SEND WHATSAPP
-    # =================================================
-
-    try:
-
-        whatsapp_result = await send_text_message(
-
-            phone=patient.phone_mobile,
-
-            message=message,
-
-            db=db,
-
-            clinic_id=str(
-                current_user.clinic_id
-            ),
-
-            patient_id=str(patient.id),
-
-            trigger="prescription_send"
-        )
-
-    except Exception as e:
-
-        whatsapp_result = {
-
-            "status": "failed",
-
-            "error": str(e)
-        }
-
-    # =================================================
-    # RESPONSE
-    # =================================================
 
     return {
-
-        "success": (
-
-            whatsapp_result.get("status")
-
-            == "sent"
-        ),
-
-        "message": (
-
-            f"Prescription sent to "
-            f"{patient_name}"
-        ),
-
-        "pdf_url": (
-
-            result.get("pdf_url")
-        ),
-
-        "secure_url": (
-
-            secure_url
-        ),
-
-        "whatsapp": (
-
-            whatsapp_result
-        )
+        "success": True,
+        "message": f"Prescription sent to {patient_name}",
+        "pdf_url": result.get("pdf_url"),
+        "secure_url": result.get("secure_url"),
     }

@@ -423,6 +423,14 @@ def get_prescription_pdf(
 # SEND PRESCRIPTION VIA WHATSAPP
 # =====================================================
 
+# =====================================================
+# SEND PRESCRIPTION VIA WHATSAPP
+# (FIXED — no longer builds/sends its own duplicate
+# message. generate_prescription() already saves the
+# PDF correctly AND sends the WhatsApp message. This
+# route just triggers it and returns the result.)
+# =====================================================
+
 @router.post("/{visit_id}/send-whatsapp")
 async def send_prescription_whatsapp(
     visit_id: str,
@@ -430,16 +438,17 @@ async def send_prescription_whatsapp(
     current_user: User = Depends(receptionist_or_doctor)
 ):
     """
-    Send prescription PDF link to patient via WhatsApp.
+    Generate (or re-generate) the prescription PDF and
+    send it to the patient via WhatsApp.
     """
 
     from app.models.visit import Visit
     from app.models.patient import Patient
     from app.services.prescription_service import generate_prescription
-    from app.services.whatsapp_service import send_text_message
 
     # =====================================================
-    # GET VISIT
+    # GET VISIT (just to confirm it exists + check patient phone
+    # before doing any PDF work)
     # =====================================================
 
     visit = db.query(Visit).filter(
@@ -449,10 +458,6 @@ async def send_prescription_whatsapp(
 
     if not visit:
         raise HTTPException(404, "Visit not found")
-
-    # =====================================================
-    # GET PATIENT
-    # =====================================================
 
     patient = db.query(Patient).filter(
         Patient.id == visit.patient_id
@@ -464,71 +469,26 @@ async def send_prescription_whatsapp(
             detail="Patient has no phone number"
         )
 
-    # =====================================================
-    # WHATSAPP OPT OUT CHECK
-    # =====================================================
-
     if getattr(patient, "whatsapp_opted_out", False):
-
         raise HTTPException(
             status_code=400,
             detail="Patient has opted out of WhatsApp"
         )
 
     # =====================================================
-    # GENERATE PRESCRIPTION
+    # GENERATE + SEND (single source of truth)
     # =====================================================
 
-    prescription = generate_prescription(
+    result = generate_prescription(
         db=db,
         visit_id=visit_id,
         clinic_id=current_user.clinic_id
     )
 
-    # =====================================================
-    # GET ACTUAL SUPABASE PDF URL
-    # =====================================================
-
-    pdf_url = prescription.get("pdf_url")
-
-    if not pdf_url:
-
-        raise HTTPException(
-            status_code=500,
-            detail="PDF URL generation failed"
-        )
-
-    # =====================================================
-    # WHATSAPP MESSAGE
-    # =====================================================
-
-    message = f"""
-Dear {patient.first_name},
-
-your prescription from today's consultation is ready.
-
-View/Download PDF:
-{pdf_url}
-
-Please save this for your records. 🙏
-"""
-
-    # =====================================================
-    # SEND WHATSAPP
-    # =====================================================
-
-    result = await send_text_message(
-        patient.phone_mobile,
-        message
-    )
-
-    # =====================================================
-    # RESPONSE
-    # =====================================================
-
     return {
-        "status": result.get("status"),
+        "status": "sent",
         "message": f"Prescription sent to {patient.first_name}",
         "phone": patient.phone_mobile,
-        "pdf_url": pdf_url
+        "pdf_url": result.get("pdf_url"),
+        "secure_url": result.get("secure_url")
     }
