@@ -401,11 +401,30 @@ def generate_prescription(
         f"/prescriptions/rx/"
         f"{visit.prescription_token}"
     )
-
+    
     # =================================================
     # WHATSAPP
     # =================================================
 
+    if patient.phone_mobile:
+
+        try:
+
+            asyncio.run(
+                send_prescription_message(
+                    phone=patient.phone_mobile,
+                    patient_name=patient.first_name,
+                    clinic_name=clinic.name,
+                    prescription_url=secure_url,
+                    support_phone=clinic.phone or ""
+                )
+            )
+
+        except Exception as e:
+
+            logger.error(
+                f"Prescription WhatsApp failed: {e}"
+            )
 
     # =================================================
     # RESPONSE
