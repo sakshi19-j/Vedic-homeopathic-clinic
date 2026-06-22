@@ -62,7 +62,7 @@ def schedule_followups_after_visit(
 
         (
             followup_date - timedelta(days=1),
-            FollowUpType.SEVEN_DAY
+            FollowUpType.CUSTOM
         ),
 
         (
