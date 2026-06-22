@@ -21,6 +21,7 @@ from app.services.whatsapp_service import (
 
 from app.models.reminder import FollowUpType
 from app.services.growth_service import schedule_followups
+from app.models.queue import Queue
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
@@ -76,10 +77,18 @@ def create_visit(
 
     db.refresh(visit)
 
+    queue_entry = db.query(Queue).filter(
+        Queue.patient_id == visit.patient_id,
+        Queue.status == "IN_TREATMENT"
+    ).first()
+
+    if queue_entry:
+        queue_entry.visit_id = visit.id
+        db.commit()
+
     # =====================================================
     # AUTO ADD TO QUEUE
     # =====================================================
-    from app.models.queue import Queue
 
     queue_entry = (
         db.query(Queue)

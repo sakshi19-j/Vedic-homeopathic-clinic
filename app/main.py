@@ -103,6 +103,9 @@ allowed_origins = [
 
     "https://care-flow-fix.lovable.app",
     "https://preview--care-flow-fix.lovable.app",
+
+    "https://clinicverse-core.lovable.app",
+    "https://preview--clinicverse-core.lovable.app",
 ]
 
 app.add_middleware(

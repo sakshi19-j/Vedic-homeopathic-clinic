@@ -318,7 +318,42 @@ def update_appointment(
         "id": appointment_id
     }
 
+@router.post("/{appointment_id}/checkin")
+def checkin_appointment(
+    appointment_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
 
+    appt = db.query(Appointment).filter(
+        Appointment.id == appointment_id,
+        Appointment.clinic_id == current_user.clinic_id
+    ).first()
+
+    if not appt:
+        raise HTTPException(
+            status_code=404,
+            detail="Appointment not found"
+        )
+
+    from app.schemas.queue import QueueAdd
+    from app.services.queue_service import add_to_queue
+
+    result = add_to_queue(
+        db=db,
+        clinic_id=current_user.clinic_id,
+        data=QueueAdd(
+            patient_id=appt.patient_id,
+            visit_type="APPOINTMENT"
+        )
+    )
+
+    appt.status = "CHECKED_IN"
+
+    db.commit()
+
+    return result
+        
 # =========================================================
 # Cancel Appointment
 # =========================================================

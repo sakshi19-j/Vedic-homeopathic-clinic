@@ -406,43 +406,6 @@ def generate_prescription(
     # WHATSAPP
     # =================================================
 
-    try:
-
-        if patient.phone_mobile:
-
-            try:
-
-                loop = asyncio.get_running_loop()
-
-                loop.create_task(
-
-                    send_prescription_message(
-                        phone=patient.phone_mobile,
-                        patient_name=patient_dict["name"],
-                        clinic_name=clinic.name,
-                        prescription_url=secure_url,
-                        support_phone=clinic.phone or "9999999999"
-                    )
-                )
-
-            except RuntimeError:
-
-                asyncio.run(
-
-                   send_prescription_message(
-                        phone=patient.phone_mobile,
-                        patient_name=patient_dict["name"],
-                        clinic_name=clinic.name,
-                        prescription_url=secure_url,
-                        support_phone=clinic.phone or "9999999999"
-                    )
-                )
-
-    except Exception as e:
-
-        logger.error(
-            f"WhatsApp send failed: {e}"
-        )
 
     # =================================================
     # RESPONSE
