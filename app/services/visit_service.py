@@ -6,7 +6,6 @@ from app.models.visit import (
     Visit,
     VisitStatus,
     PaymentStatus,
-    PaymentMode,
     HomeopathyCase,
     Vitals
 )
@@ -15,12 +14,6 @@ from app.models.billing import Payment
 
 from app.schemas.visit import CloseVisitRequest
 
-from app.services.whatsapp_service import (
-    send_visit_thank_you
-)
-
-from app.models.reminder import FollowUpType
-from app.services.growth_service import schedule_followups
 from app.models.queue import Queue
 # =====================================================
 # PRIVATE HELPERS
@@ -448,13 +441,6 @@ def close_visit(
 
     visit.visit_status = VisitStatus.BILLING
 
-    schedule_followups(
-        db=db,
-        visit_id=visit.id,
-        patient_id=visit.patient_id,
-        clinic_id=visit.clinic_id,
-        disease_type=data.disease_type or "default"
-    )
     visit.closed_at = datetime.utcnow()
 
     # =====================================================
@@ -543,32 +529,27 @@ def close_visit(
     # CREATE FOLLOWUP FROM DOCTOR INPUT
     # =====================================================
 
-    existing_followup = db.query(FollowUp).filter(
-        FollowUp.visit_id == visit.id
-    ).first()
+    # =====================================================
+# CREATE FOLLOWUPS FROM DOCTOR INPUT
+# =====================================================
 
-    if not existing_followup and data.followup_date:
+    if data.followup_date:
+
+        from app.services.reminder_service import (
+            schedule_followups_after_visit
+        )
 
         followup_date = datetime.fromisoformat(
             data.followup_date
         )
 
-        followup = FollowUp(
-
-            clinic_id=visit.clinic_id,
-
-            patient_id=visit.patient_id,
-
+        schedule_followups_after_visit(
+            db=db,
             visit_id=visit.id,
-
-            due_date=followup_date,
-
-            type=FollowUpType.CUSTOM,
-
-            status=FollowUpStatus.PENDING,
+            patient_id=visit.patient_id,
+            clinic_id=visit.clinic_id,
+            followup_date=followup_date
         )
-
-        db.add(followup)
 
     # =====================================================
     # SAVE EVERYTHING
@@ -601,70 +582,6 @@ def close_visit(
             str(e)
         )
 
-    # =====================================================
-    # SEND THANK YOU MESSAGE
-    # =====================================================
-
-    try:
-
-        from app.models.patient import Patient
-
-        import asyncio
-
-        patient = db.query(Patient).filter(
-            Patient.id == visit.patient_id
-        ).first()
-
-        if patient and patient.phone_mobile:
-
-            loop = asyncio.new_event_loop()
-
-            asyncio.set_event_loop(loop)
-            from app.models.clinic import Clinic
-
-            clinic = db.query(Clinic).filter(
-                Clinic.id == visit.clinic_id
-            ).first()
-
-            clinic_name = (
-                clinic.name
-                if clinic and clinic.name
-                else "Clinic"
-)
-            loop.run_until_complete(
-
-                send_visit_thank_you(
-
-                    phone=patient.phone_mobile,
-
-                    patient_name=(
-                        f"{patient.first_name} "
-                        f"{patient.last_name or ''}"
-                    ).strip(),
-
-                    clinic_name=clinic_name
-                )
-            )
-
-            loop.close()
-
-    except Exception as e:
-
-        print(
-            "WhatsApp thankyou failed:",
-            str(e)
-        )
-
-    return {
-
-        "success": True,
-
-        "message": (
-            "Visit closed successfully"
-        ),
-
-        "visit_id": visit.id
-    }
 # =====================================================
 # UPDATE VISIT STATUS
 # =====================================================

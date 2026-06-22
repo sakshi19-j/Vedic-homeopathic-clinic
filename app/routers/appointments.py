@@ -344,7 +344,7 @@ def checkin_appointment(
         clinic_id=current_user.clinic_id,
         data=QueueAdd(
             patient_id=appt.patient_id,
-            visit_type="APPOINTMENT"
+            visit_type="HOMEOPATHY"
         )
     )
 
