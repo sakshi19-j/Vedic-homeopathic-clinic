@@ -388,3 +388,28 @@ def collect_payment(
 
         "receipt": receipt
     }
+
+# =========================================================
+# FRONTEND COMPATIBILITY ROUTE
+# =========================================================
+
+@router.post("/{visit_id}/mark-paid")
+def mark_paid(
+    visit_id: str,
+    payload: CollectPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+    """
+    Frontend currently calls:
+    /billing/{visit_id}/mark-paid
+
+    Redirect internally to collect_payment().
+    """
+
+    return collect_payment(
+        visit_id=visit_id,
+        payload=payload,
+        db=db,
+        current_user=current_user
+    )
