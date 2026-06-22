@@ -11,6 +11,7 @@ from app.middleware.auth_middleware import (
 )
 from app.middleware.auth_middleware import CurrentUser
 from app.models.patient import Patient
+from app.schemas.reminder import FollowUpCreate
 
 router = APIRouter(prefix="/reminders", tags=["Reminders"])
 
@@ -142,7 +143,7 @@ def mark_done(
 
 @router.post("/schedule")
 def schedule_followup(
-    data: dict,
+    data: FollowUpCreate,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(receptionist_or_doctor)
 ):
@@ -153,9 +154,9 @@ def schedule_followup(
         Channel as ReminderChannel
     )
 
-    patient_id = data.get("patient_id")
-    due_date = data.get("due_date")
-    ftype = data.get("type", "CUSTOM")
+    patient_id = data.patient_id
+    due_date = data.due_date
+    ftype = data.type
 
     if not patient_id or not due_date:
         raise HTTPException(
@@ -177,7 +178,7 @@ def schedule_followup(
     followup = FollowUp(
         clinic_id=current_user.clinic_id,
         patient_id=patient_id,
-        due_date=datetime.strptime(due_date, "%Y-%m-%d"),
+        due_date=due_date,
         type=(
             FollowUpType[ftype.upper()]
             if ftype.upper() in FollowUpType.__members__
