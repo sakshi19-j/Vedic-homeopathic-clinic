@@ -50,6 +50,7 @@ def current_patient(
         db, current_user.clinic_id
     )
 
+@router.post("/next")
 @router.post("/call-next")
 def call_next(
     db:           Session = Depends(get_db),
