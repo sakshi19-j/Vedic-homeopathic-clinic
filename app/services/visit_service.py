@@ -442,10 +442,9 @@ def close_visit(
     ).first()
 
     # keep pending until billing
-    visit.payment_status = PaymentStatus.PENDING
 
     visit.visit_status = VisitStatus.BILLING
-
+    visit.payment_status = PaymentStatus.PENDING
     visit.closed_at = datetime.utcnow()
 
     # =====================================================
@@ -472,14 +471,7 @@ def close_visit(
 
             amount=data.fee,
 
-            payment_mode=(
-
-                data.payment_mode
-
-                if data.payment_mode
-
-                else "CASH"
-            )
+            payment_mode="PENDING"
         )
 
         db.add(payment)
