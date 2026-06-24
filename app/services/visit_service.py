@@ -15,6 +15,7 @@ from app.models.billing import Payment
 from app.schemas.visit import CloseVisitRequest
 
 from app.models.queue import Queue
+from datetime import datetime, timedelta
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
@@ -417,7 +418,11 @@ def close_visit(
 
     visit.fee = data.fee
 
-    visit.payment_mode = None
+    visit.payment_mode = (
+        data.payment_mode
+        if data.payment_mode
+        else None
+    )
 
     # =====================================================
     # FINAL VISIT LIFECYCLE UPDATE
@@ -533,23 +538,37 @@ def close_visit(
 # CREATE FOLLOWUPS FROM DOCTOR INPUT
 # =====================================================
 
-    if data.followup_date:
+    if data.followup_type:
 
         from app.services.reminder_service import (
             schedule_followups_after_visit
         )
 
-        followup_date = datetime.fromisoformat(
-            data.followup_date
-        )
+        if data.followup_type == "3_DAY":
+            followup_date = datetime.utcnow() + timedelta(days=3)
 
-        schedule_followups_after_visit(
-            db=db,
-            visit_id=visit.id,
-            patient_id=visit.patient_id,
-            clinic_id=visit.clinic_id,
-            followup_date=followup_date
-        )
+        elif data.followup_type == "7_DAY":
+            followup_date = datetime.utcnow() + timedelta(days=7)
+
+        elif data.followup_type == "15_DAY":
+            followup_date = datetime.utcnow() + timedelta(days=15)
+
+        elif data.followup_type == "30_DAY":
+            followup_date = datetime.utcnow() + timedelta(days=30)
+
+        else:
+            followup_date = None
+
+        if followup_date:
+            visit.followup_date = followup_date
+            visit.followup_status = "PENDING"
+            schedule_followups_after_visit(
+                db=db,
+                visit_id=visit.id,
+                patient_id=visit.patient_id,
+                clinic_id=visit.clinic_id,
+                followup_date=followup_date
+            )
 
     # =====================================================
     # SAVE EVERYTHING
@@ -582,6 +601,12 @@ def close_visit(
             str(e)
         )
 
+    return {
+        "success": True,
+        "visit_id": visit.id,
+        "status": visit.visit_status.value,
+        "payment_status": visit.payment_status.value
+    }
 # =====================================================
 # UPDATE VISIT STATUS
 # =====================================================
