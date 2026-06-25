@@ -516,44 +516,37 @@ def close_visit(
             pass
 
     # =====================================================
-    # CREATE FOLLOWUP FROM DOCTOR INPUT
+    # CREATE FOLLOWUPS FROM DOCTOR INPUT
     # =====================================================
 
-    # =====================================================
-# CREATE FOLLOWUPS FROM DOCTOR INPUT
-# =====================================================
+    mapping = {
+        "3_DAY": 3,
+        "7_DAY": 7,
+        "15_DAY": 15,
+        "30_DAY": 30,
+    }
 
-    if data.followup_type:
+    days = mapping.get(data.followup_type)
+
+    if days:
+
+        followup_date = datetime.utcnow() + timedelta(days=days)
+
+        visit.followup_date = followup_date
+        visit.followup_status = "PENDING"
 
         from app.services.reminder_service import (
             schedule_followups_after_visit
         )
 
-        if data.followup_type == "3_DAY":
-            followup_date = datetime.utcnow() + timedelta(days=3)
+        schedule_followups_after_visit(
+            db=db,
+            visit_id=visit.id,
+            patient_id=visit.patient_id,
+            clinic_id=visit.clinic_id,
+            followup_date=followup_date
+        )
 
-        elif data.followup_type == "7_DAY":
-            followup_date = datetime.utcnow() + timedelta(days=7)
-
-        elif data.followup_type == "15_DAY":
-            followup_date = datetime.utcnow() + timedelta(days=15)
-
-        elif data.followup_type == "30_DAY":
-            followup_date = datetime.utcnow() + timedelta(days=30)
-
-        else:
-            followup_date = None
-
-        if followup_date:
-            visit.followup_date = followup_date
-            visit.followup_status = "PENDING"
-            schedule_followups_after_visit(
-                db=db,
-                visit_id=visit.id,
-                patient_id=visit.patient_id,
-                clinic_id=visit.clinic_id,
-                followup_date=followup_date
-            )
 
     # =====================================================
     # SAVE EVERYTHING

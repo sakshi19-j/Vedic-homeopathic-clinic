@@ -83,3 +83,18 @@ class Payment(Base):
         "Visit",
         back_populates="payments"
     )
+
+    status = Column(
+        String,
+        default="PENDING"
+    )
+
+    receipt_url = Column(
+        String,
+        nullable=True
+    )
+
+    transaction_ref = Column(
+        String,
+        nullable=True
+    )

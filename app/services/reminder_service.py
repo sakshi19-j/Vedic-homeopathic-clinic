@@ -52,7 +52,11 @@ def schedule_followups_after_visit(
     clinic_id,
     followup_date
 ):
-
+    if not followup_date:
+        return {
+            "scheduled": 0
+        }
+    
     reminder_dates = [
 
         (
