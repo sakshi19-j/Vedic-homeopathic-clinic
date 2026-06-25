@@ -112,7 +112,9 @@ def add_to_queue(
 
         check_in_time=now_ist()
     )
+    entry.visit_id = None
 
+    entry.doctor_id = None
     db.add(entry)
 
     db.commit()
@@ -230,7 +232,21 @@ def get_todays_queue(
 
             "wait_minutes": wait_mins,
 
-            "notes": e.notes
+            "notes": e.notes,
+
+            "visit_id": e.visit_id,
+
+            "doctor_id": e.doctor_id,
+
+            "start_time": (
+                e.start_time.strftime("%H:%M")
+                if e.start_time else None
+            ),
+
+            "end_time": (
+                e.end_time.strftime("%H:%M")
+                if e.end_time else None
+            ),
         })
 
     return result
@@ -283,6 +299,16 @@ def get_current_patient(
         "start_time": (
             current.start_time.strftime("%H:%M")
             if current.start_time else None
+        ),
+        "visit_id": current.visit_id,
+
+        "doctor_id": current.doctor_id,
+
+        "status": current.status,
+
+        "called_time": (
+            current.called_time.strftime("%H:%M")
+            if current.called_time else None
         )
     }
 
@@ -292,7 +318,8 @@ def get_current_patient(
 # =========================================================
 def call_next(
     db: Session,
-    clinic_id: str
+    clinic_id: str,
+    doctor_id: str
 ) -> dict:
 
     today = now_ist().date()
@@ -331,7 +358,8 @@ def call_next(
 
     next_patient.called_time = now_ist()
     next_patient.start_time = now_ist()
-
+    next_patient.doctor_id = doctor_id
+    next_patient.updated_at = now_ist()
     db.commit()
 
     patient = db.query(Patient).filter(
@@ -370,9 +398,10 @@ def mark_done(
     )
 
     entry.status = "BILLING_PENDING"
-
+    entry.completed_at = now_ist()
     entry.end_time = now_ist()
-
+    entry.updated_at = now_ist()
+    
     db.commit()
 
     return {

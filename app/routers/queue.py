@@ -34,11 +34,10 @@ def get_queue(
     Both doctor and receptionist see this.
     Receptionist screen polls this every 5 seconds.
     """
-    return {
-        "queue": queue_service.get_todays_queue(
-            db, current_user.clinic_id
-        )
-    }
+    return queue_service.get_todays_queue(
+        db,
+        current_user.clinic_id
+    )
 
 @router.get("/current")
 def current_patient(
@@ -61,7 +60,11 @@ def call_next(
     Doctor or receptionist clicks this.
     Current patient marked complete, next one starts.
     """
-    return queue_service.call_next(db, current_user.clinic_id)
+    return queue_service.call_next(
+        db,
+        current_user.clinic_id,
+        str(current_user.id)
+    )
 
 @router.post("/{queue_id}/done")
 def mark_done(

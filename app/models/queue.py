@@ -21,3 +21,19 @@ class Queue(BaseModel):
     end_time       = Column(DateTime, nullable=True)
     notes          = Column(String, nullable=True)
     visit_id       = Column(String, nullable=True)   # linked after visit created
+    doctor_id = Column(
+        String,
+        nullable=True,
+        index=True
+    )
+
+    completed_at = Column(
+        DateTime,
+        nullable=True
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
