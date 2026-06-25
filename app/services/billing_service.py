@@ -270,6 +270,9 @@ def generate_receipt(
             if visit.payment_mode
             else payment.payment_mode
         )
+        
+        payment.status = "PAID"
+        payment.updated_at = datetime.utcnow()
 
         db.add(payment)
         from app.models.visit import (
