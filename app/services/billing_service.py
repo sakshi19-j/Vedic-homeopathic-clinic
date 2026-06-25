@@ -265,7 +265,11 @@ def generate_receipt(
 
         payment.receipt_url = pdf_url
 
-        payment.payment_mode = visit.payment_mode
+        payment.payment_mode = (
+            visit.payment_mode
+            if visit.payment_mode
+            else payment.payment_mode
+        )
 
         db.add(payment)
         from app.models.visit import (

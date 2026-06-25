@@ -482,21 +482,14 @@ def close_visit(
 
     else:
 
-        payment.clinic_id = (
-            visit.clinic_id
-        )
+        payment.clinic_id = visit.clinic_id
 
-        payment.amount = (
-            data.fee
-        )
+        payment.amount = data.fee
 
         payment.payment_mode = (
-
             data.payment_mode
-
             if data.payment_mode
-
-            else "CASH"
+            else "PENDING"
         )
 
     # =====================================================
