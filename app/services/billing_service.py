@@ -340,12 +340,12 @@ def generate_receipt(
             )
 
             from app.services.whatsapp_service import (
-                send_thank_you_message
+                send_thankyou_message
             )
 
             loop.run_until_complete(
 
-                send_thank_you_message(
+                send_thankyou_message(
 
                     phone=patient.phone_mobile,
 
