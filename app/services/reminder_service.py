@@ -75,7 +75,8 @@ def schedule_followups_after_visit(
     for due_date, reminder_type in reminder_dates:
         existing = db.query(FollowUp).filter(
             FollowUp.visit_id == visit_id,
-            FollowUp.type == reminder_type
+            FollowUp.type == reminder_type,
+            FollowUp.due_date == due_date
         ).first()
 
         if existing:

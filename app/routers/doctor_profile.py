@@ -114,9 +114,19 @@ def get_profile(
 
     if not profile:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Profile not found"
-        )
+            profile = DoctorProfile(
+                clinic_id=current_user.clinic_id,
+                doctor_name="",
+                clinic_name="",
+                qualification="",
+                registration_number="",
+                specialty="",
+                whatsapp_number="",
+                clinic_address=""
+            )
+
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
 
     return profile

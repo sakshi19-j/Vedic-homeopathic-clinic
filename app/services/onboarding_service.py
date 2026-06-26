@@ -17,7 +17,7 @@ def get_onboarding_status(db: Session, clinic_id: str) -> dict:
     
     # Auto-detect completed steps
     has_logo      = bool(clinic.logo_url and os.path.exists(str(clinic.logo_url)))
-    has_signature = bool(clinic.signature_url and os.path.exists(str(clinic.signature_url)))
+    has_signature = bool( clinic.signature_url)
     has_whatsapp  = bool(os.getenv("WHATSAPP_ACCESS_TOKEN"))
     
     has_patient = db.query(Patient).filter(
