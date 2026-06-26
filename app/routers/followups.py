@@ -22,12 +22,54 @@ def followups_today(
 
     today = date.today()
 
-    followups = db.query(FollowUp).filter(
-        FollowUp.clinic_id == current_user.clinic_id,
-        func.date(FollowUp.due_date) <= today
-    ).all()
+    from sqlalchemy.orm import joinedload
 
-    return followups
+    followups = (
+        db.query(FollowUp)
+        .options(joinedload(FollowUp.patient))
+        .filter(
+            FollowUp.clinic_id == current_user.clinic_id,
+            func.date(FollowUp.due_date) <= today
+        )
+        .all()
+    )
+
+    result = []
+
+    for f in followups:
+
+        patient = f.patient
+
+        result.append({
+            "id": str(f.id),
+            "patient_id": str(f.patient_id),
+            "patient_name": (
+                f"{patient.first_name} {patient.last_name or ''}".strip()
+                if patient else "Unknown"
+            ),
+            "patient_phone": (
+                patient.phone_mobile
+                if patient else None
+            ),
+            "status": (
+                f.status.value
+                if f.status else None
+            ),
+            "type": (
+                f.type.value
+                if f.type else None
+            ),
+            "channel": (
+                f.channel.value
+                if f.channel else None
+            ),
+            "due_date": (
+                f.due_date.strftime("%Y-%m-%d")
+                if f.due_date else None
+            )
+        })
+
+    return result
 
 
 @router.get("/upcoming")
@@ -38,9 +80,51 @@ def followups_upcoming(
 
     today = date.today()
 
-    followups = db.query(FollowUp).filter(
-        FollowUp.clinic_id == current_user.clinic_id,
-        func.date(FollowUp.due_date) > today
-    ).all()
+    from sqlalchemy.orm import joinedload
 
-    return followups
+    followups = (
+        db.query(FollowUp)
+        .options(joinedload(FollowUp.patient))
+        .filter(
+            FollowUp.clinic_id == current_user.clinic_id,
+            func.date(FollowUp.due_date) > today
+        )
+        .all()
+    )
+
+    result = []
+
+    for f in followups:
+
+        patient = f.patient
+
+        result.append({
+            "id": str(f.id),
+            "patient_id": str(f.patient_id),
+            "patient_name": (
+                f"{patient.first_name} {patient.last_name or ''}".strip()
+                if patient else "Unknown"
+            ),
+            "patient_phone": (
+                patient.phone_mobile
+                if patient else None
+            ),
+            "status": (
+                f.status.value
+                if f.status else None
+            ),
+            "type": (
+                f.type.value
+                if f.type else None
+            ),
+            "channel": (
+                f.channel.value
+                if f.channel else None
+            ),
+            "due_date": (
+                f.due_date.strftime("%Y-%m-%d")
+                if f.due_date else None
+            )
+        })
+
+    return result

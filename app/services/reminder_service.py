@@ -269,7 +269,7 @@ async def send_due_reminders_async(
 ) -> dict:
 
     from app.services.whatsapp_service import (
-        send_template_message
+         send_followup_reminder
     )
 
     due     = get_due_reminders(db, clinic_id)
@@ -287,7 +287,7 @@ async def send_due_reminders_async(
 
         try:
 
-            result = await send_template_message(
+            result = await send_followup_reminder(
                 phone         = phone,
                 template_name = reminder["template_key"],
                 language = "en_US",
@@ -403,7 +403,7 @@ async def send_single_reminder(
 ) -> dict:
 
     from app.services.whatsapp_service import (
-        send_template_message
+        send_followup_reminder
     )
 
     followup = db.query(FollowUp).filter(
@@ -447,7 +447,7 @@ async def send_single_reminder(
         )
     try:
 
-        result = await send_template_message(
+        result = await send_followup_reminder(
             phone=patient.phone_mobile,
             template_name=get_template_key(followup.type),
             language="en_US",
