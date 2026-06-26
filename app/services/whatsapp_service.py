@@ -94,14 +94,23 @@ async def send_text_message(
 
     }
 
-    response = requests.post(
+    try:
 
-        WHATSAPP_API_URL,
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
 
-        headers=headers,
+    except Exception as e:
 
-        json=payload
-    )
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     try:
 
@@ -195,11 +204,23 @@ async def send_prescription_message(
         }
     }
 
-    response = requests.post(
-        WHATSAPP_API_URL,
-        headers=headers,
-        json=payload
-    )
+    try:
+
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
+
+    except Exception as e:
+
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     data = response.json()
 
@@ -270,11 +291,23 @@ async def send_followup_reminder(
         }
     }
 
-    response = requests.post(
-        WHATSAPP_API_URL,
-        headers=headers,
-        json=payload
-    )
+    try:
+
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
+
+    except Exception as e:
+
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     data = response.json()
 
@@ -337,11 +370,23 @@ async def send_thankyou_message(
         }
     }
 
-    response = requests.post(
-        WHATSAPP_API_URL,
-        headers=headers,
-        json=payload
-    )
+    try:
+
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
+
+    except Exception as e:
+
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     return response.json()
 
@@ -424,11 +469,23 @@ async def send_birthday_message(
         }
     }
 
-    response = requests.post(
-        WHATSAPP_API_URL,
-        headers=headers,
-        json=payload
-    )
+    try:
+
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
+
+    except Exception as e:
+
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     return response.json()
 
@@ -486,11 +543,23 @@ async def send_billing_receipt(
         }
     }
 
-    response = requests.post(
-        WHATSAPP_API_URL,
-        headers=headers,
-        json=payload
-    )
+    try:
+
+        response = requests.post(
+            WHATSAPP_API_URL,
+            headers=headers,
+            json=payload
+        )
+
+    except Exception as e:
+
+        return {
+
+            "status":"failed",
+
+            "error":str(e)
+
+        }
 
     data = response.json()
 

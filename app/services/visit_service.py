@@ -464,14 +464,14 @@ def close_visit(
     if not payment:
 
         payment = Payment(
-
             visit_id=visit.id,
-
             clinic_id=visit.clinic_id,
-
             amount=data.fee,
 
-            payment_mode="PENDING"
+            # Payment is not completed yet
+            payment_mode=None,
+
+            status="PENDING"
         )
 
         db.add(payment)
@@ -489,8 +489,10 @@ def close_visit(
         payment.payment_mode = (
             data.payment_mode
             if data.payment_mode
-            else "PENDING"
+            else None
         )
+
+        payment.status = "PENDING"
 
     # =====================================================
     # UPDATE QUEUE STATUS
@@ -544,9 +546,9 @@ def close_visit(
             visit_id=visit.id,
             patient_id=visit.patient_id,
             clinic_id=visit.clinic_id,
-            followup_date=followup_date
+            followup_date=followup_date,
+            followup_type=data.followup_type
         )
-
 
     # =====================================================
     # SAVE EVERYTHING

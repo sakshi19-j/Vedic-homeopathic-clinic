@@ -24,7 +24,7 @@ def followups_today(
 
     followups = db.query(FollowUp).filter(
         FollowUp.clinic_id == current_user.clinic_id,
-        func.date(FollowUp.followup_date) == today
+        func.date(FollowUp.due_date) == today
     ).all()
 
     return followups
@@ -40,7 +40,7 @@ def followups_upcoming(
 
     followups = db.query(FollowUp).filter(
         FollowUp.clinic_id == current_user.clinic_id,
-        func.date(FollowUp.followup_date) > today
+        func.date(FollowUp.due_date) > today
     ).all()
 
     return followups

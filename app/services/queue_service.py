@@ -76,7 +76,8 @@ def add_to_queue(
             Queue.status.in_([
                 "WAITING",
                 "IN_TREATMENT",
-                "BILLING_PENDING"
+                "BILLING_PENDING",
+                "COMPLETED"
             ])
         )
     ).first()
@@ -161,6 +162,7 @@ def get_todays_queue(
                 "WAITING",
                 "IN_TREATMENT",
                 "BILLING_PENDING",
+                "COMPLETED"
             ])
          )
     ).order_by(
@@ -401,7 +403,7 @@ def mark_done(
     entry.completed_at = now_ist()
     entry.end_time = now_ist()
     entry.updated_at = now_ist()
-    
+
     db.commit()
 
     return {

@@ -10,7 +10,7 @@ from app.database import SessionLocal
 from app.config import settings
 from app.services.growth_service import flag_missed_patients
 from app.services.reminder_service import send_due_reminders
-
+from app.models.visit import VisitStatus
 logger = logging.getLogger(__name__)
 IST    = pytz.timezone("Asia/Kolkata")
 
@@ -88,7 +88,7 @@ async def _job_daily_reminders(db):
 
                 recent_visits = db.query(Visit).filter(
                     Visit.clinic_id == clinic.id,
-                    Visit.visit_status == "COMPLETED"
+                    Visit.visit_status == VisitStatus.COMPLETED
                 ).all()
 
                 logger.info(
@@ -336,8 +336,9 @@ async def _job_cleanup(db):
                     if age > cutoff:
                         os.unlink(filepath)
                         cleaned += 1
-                except Exception:
-                    pass
+                except Exception as e:
+
+                    logger.warning(str(e))
 
         logger.info(f"✅ Cleanup: {cleaned} temp files removed")
 

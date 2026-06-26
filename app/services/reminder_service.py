@@ -50,7 +50,8 @@ def schedule_followups_after_visit(
     visit_id,
     patient_id,
     clinic_id,
-    followup_date
+    followup_date,
+    followup_type
 ):
     if not followup_date:
         return {
@@ -60,25 +61,21 @@ def schedule_followups_after_visit(
     reminder_dates = [
 
         (
-            followup_date - timedelta(days=1),
-            FollowUpType.CUSTOM
-        ),
-
-        (
-            followup_date - timedelta(hours=3),
-            FollowUpType.CUSTOM
+            followup_date - timedelta(days=3),
+            followup_type
         ),
 
         (
             followup_date,
-            FollowUpType.CUSTOM
+            followup_type
         )
+
     ]
 
     for due_date, reminder_type in reminder_dates:
         existing = db.query(FollowUp).filter(
             FollowUp.visit_id == visit_id,
-            FollowUp.due_date == due_date
+            FollowUp.type == reminder_type
         ).first()
 
         if existing:
@@ -97,7 +94,9 @@ def schedule_followups_after_visit(
 
     db.commit()
 
-    return {"scheduled": 3}
+    return {
+        "scheduled": len(reminder_dates)
+    }
 # =====================================================
 # GET DUE REMINDERS
 # =====================================================
