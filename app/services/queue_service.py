@@ -391,26 +391,15 @@ def mark_done(
     db: Session,
     queue_id: str,
     clinic_id: str
-) -> dict:
+):
 
-    entry = _get_entry(
-        db,
-        queue_id,
-        clinic_id
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "This endpoint is deprecated. "
+            "Use POST /visits/{visit_id}/close instead."
+        )
     )
-
-    entry.status = "BILLING_PENDING"
-    entry.completed_at = now_ist()
-    entry.end_time = now_ist()
-    entry.updated_at = now_ist()
-
-    db.commit()
-
-    return {
-        "message": "Patient moved to billing",
-        "queue_id": queue_id,
-        "status": "BILLING_PENDING"
-    }
 
 # =========================================================
 # Mark No Show

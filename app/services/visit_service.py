@@ -72,13 +72,30 @@ def create_visit(
     db.refresh(visit)
 
     queue_entry = db.query(Queue).filter(
-        Queue.patient_id == visit.patient_id,
-        Queue.status == "IN_TREATMENT"
+        Queue.visit_id == visit.id
     ).first()
 
+    if not queue_entry:
+
+        queue_entry = db.query(Queue).filter(
+            Queue.patient_id == visit.patient_id,
+            Queue.status == "IN_TREATMENT"
+        ).first()
+
     if queue_entry:
+
         queue_entry.visit_id = visit.id
-        db.commit()
+        queue_entry.status = "BILLING_PENDING"
+
+        try:
+            queue_entry.completed_at = datetime.utcnow()
+        except:
+            pass
+
+        try:
+            queue_entry.end_time = datetime.utcnow()
+        except:
+            pass
 
     # =====================================================
     # AUTO ADD TO QUEUE
@@ -572,6 +589,18 @@ def close_visit(
             db=db,
             visit_id=visit.id,
             clinic_id=visit.clinic_id
+        )
+
+        print(
+            f"Visit {visit.id} closed successfully."
+        )
+
+        print(
+            f"Payment Pending created."
+        )
+
+        print(
+            f"Queue moved to BILLING_PENDING."
         )
 
     except Exception as e:

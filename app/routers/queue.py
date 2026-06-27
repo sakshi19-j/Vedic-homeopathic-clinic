@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.queue import QueueAdd
@@ -72,10 +72,11 @@ def mark_done(
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
-    return queue_service.mark_done(
-        db,
-        queue_id,
-        current_user.clinic_id
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Use /visits/{visit_id}/close."
+        )
     )
 
 @router.put("/{queue_id}/no-show")
