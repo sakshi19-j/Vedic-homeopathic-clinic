@@ -310,7 +310,17 @@ def get_pending_payments(
                 if v.closed_at else 0
             )
         })
+    print("========== BILLING ==========")
 
+    for v in visits:
+        print(
+            v.id,
+            v.visit_status,
+            v.payment_status,
+            v.fee
+        )
+
+    print("=============================")
 
     return {
         "total": len(result),

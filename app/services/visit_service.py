@@ -435,11 +435,7 @@ def close_visit(
 
     visit.fee = data.fee
 
-    visit.payment_mode = (
-        data.payment_mode
-        if data.payment_mode
-        else None
-    )
+    visit.payment_mode = None
 
     # =====================================================
     # FINAL VISIT LIFECYCLE UPDATE
@@ -462,6 +458,7 @@ def close_visit(
 
     visit.visit_status = VisitStatus.BILLING
     visit.payment_status = PaymentStatus.PENDING
+    visit.fee = float(data.fee or 0)
     visit.closed_at = datetime.utcnow()
 
     # =====================================================
@@ -503,14 +500,10 @@ def close_visit(
 
         payment.amount = data.fee
 
-        payment.payment_mode = (
-            data.payment_mode
-            if data.payment_mode
-            else None
-        )
+        payment.payment_mode = None
 
         payment.status = "PENDING"
-
+        db.add(payment)
     # =====================================================
     # UPDATE QUEUE STATUS
     # =====================================================
@@ -522,6 +515,7 @@ def close_visit(
     if queue_entry:
 
         queue_entry.status = "BILLING_PENDING"
+        db.add(queue_entry)
 
         # optional if fields exist
         try:
@@ -594,8 +588,8 @@ def close_visit(
         # SAVE EVERYTHING
         # =====================================================
 
-        db.commit()
-        db.refresh(visit)
+    db.commit()
+    db.refresh(visit)
 
     # =====================================================
     # AUTO GENERATE PRESCRIPTION
@@ -632,6 +626,13 @@ def close_visit(
             str(e)
         )
 
+    db.commit()
+    db.refresh(visit)
+
+    print("Visit Status:", visit.visit_status)
+    print("Payment Status:", visit.payment_status)
+    print("Fee:", visit.fee)
+    print("Closed:", visit.closed_at)
     return {
         "success": True,
         "visit_id": visit.id,
@@ -682,7 +683,7 @@ def update_visit_status(
     if status_enum == VisitStatus.COMPLETED:
 
         visit.closed_at = datetime.utcnow()
-
+        db.add(visit)
     db.commit()
 
     db.refresh(visit)
@@ -813,7 +814,7 @@ def save_homeopathy_case(
     db.commit()
 
     db.refresh(homeopathy_case)
-
+    
     return {
         "message": "Homeopathy case saved",
         "visit_id": visit_id
