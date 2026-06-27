@@ -538,42 +538,64 @@ def close_visit(
     # CREATE FOLLOWUPS FROM DOCTOR INPUT
     # =====================================================
 
+    # =====================================================
+# CREATE FOLLOWUPS FROM DOCTOR INPUT
+# =====================================================
+
     mapping = {
+        "THREE_DAY": 3,
+        "SEVEN_DAY": 7,
+        "FIFTEEN_DAY": 15,
+        "THIRTY_DAY": 30,
+
         "3_DAY": 3,
         "7_DAY": 7,
         "15_DAY": 15,
         "30_DAY": 30,
     }
 
-    days = mapping.get(data.followup_type)
+    followup_date = None
 
-    if days:
+    if data.followup_type == "CUSTOM":
 
-        followup_date = datetime.utcnow() + timedelta(days=days)
+        followup_date = data.followup_date
 
-        visit.followup_date = followup_date
-        visit.followup_status = "PENDING"
+    else:
 
-        from app.services.reminder_service import (
-            schedule_followups_after_visit
-        )
+        days = mapping.get(data.followup_type)
 
-        schedule_followups_after_visit(
-            db=db,
-            visit_id=visit.id,
-            patient_id=visit.patient_id,
-            clinic_id=visit.clinic_id,
-            followup_date=followup_date,
-            followup_type=data.followup_type
-        )
+        if days:
+            followup_date = datetime.utcnow() + timedelta(days=days)
 
-    # =====================================================
-    # SAVE EVERYTHING
-    # =====================================================
+        if followup_date:
 
-    db.commit()
+            visit.followup_date = followup_date
+            visit.followup_status = "PENDING"
 
-    db.refresh(visit)
+            db.query(FollowUp).filter(
+                FollowUp.visit_id == visit.id,
+                FollowUp.status == FollowUpStatus.PENDING
+            ).delete()
+
+            from app.services.reminder_service import (
+                schedule_followups_after_visit
+            )
+
+            schedule_followups_after_visit(
+                db=db,
+                visit_id=visit.id,
+                patient_id=visit.patient_id,
+                clinic_id=visit.clinic_id,
+                followup_date=followup_date,
+                followup_type=data.followup_type
+            )
+
+        # =====================================================
+        # SAVE EVERYTHING
+        # =====================================================
+
+        db.commit()
+        db.refresh(visit)
 
     # =====================================================
     # AUTO GENERATE PRESCRIPTION

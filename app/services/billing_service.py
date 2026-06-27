@@ -270,7 +270,7 @@ def generate_receipt(
             if visit.payment_mode
             else payment.payment_mode
         )
-
+        payment.amount = visit.fee
         payment.status = "PAID"
         payment.updated_at = datetime.utcnow()
 
