@@ -14,7 +14,7 @@ class VisitCreate(BaseModel):
 
     chief_complaint: Optional[str] = None
     notes: Optional[str] = None
-
+    fee: Optional[float] = 0
 
 # =====================================================
 # VITALS
