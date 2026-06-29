@@ -257,24 +257,34 @@ def get_pending_payments(
 
     from app.models.patient import Patient
 
-    visits = db.query(Visit).filter(
-        Visit.clinic_id == current_user.clinic_id,
-        Visit.payment_status == PaymentStatus.PENDING,
-        Visit.visit_status == VisitStatus.BILLING
-    ).order_by(
-        Visit.closed_at.desc()
-    ).all()
+    from app.models.billing import Payment
+
+    payments = (
+        db.query(Payment)
+            .join(Visit, Payment.visit_id == Visit.id)
+            .filter(
+                Visit.clinic_id == current_user.clinic_id,
+                Payment.status == "PENDING",
+                Visit.visit_status == VisitStatus.BILLING,
+            )
+            .order_by(Visit.closed_at.desc())
+            .all()
+        )
 
     result = []
 
-    for v in visits:
+    for payment in payments:
+
+        visit = db.query(Visit).filter(
+        Visit.id == payment.visit_id
+        ).first()
 
         patient = db.query(Patient).filter(
-            Patient.id == v.patient_id
+            Patient.id == visit.patient_id
         ).first()
 
         result.append({
-            "visit_id": v.id,
+            "visit_id": visit.id,
 
             "patient_name": (
                 f"{patient.first_name} {patient.last_name or ''}".strip()
@@ -290,37 +300,26 @@ def get_pending_payments(
                 if patient else None
             ),
 
-            "fee": float(v.fee or 0),
+            "fee": float(payment.amount or 0),
 
             "visit_date": (
-                v.visit_date.strftime("%d-%m-%Y")
-                if v.visit_date else None
+                visit.visit_date.strftime("%d-%m-%Y")
+                if visit.visit_date else None
             ),
 
             "visit_type": (
-                v.type.value
-                if v.type else None
+                visit.type.value
+                if visit.type else None
             ),
 
             "days_pending": (
                 (
                     datetime.utcnow().date()
-                    - v.closed_at.date()
+                    - visit.closed_at.date()
                 ).days
-                if v.closed_at else 0
+                if visit.closed_at else 0
             )
         })
-    print("========== BILLING ==========")
-
-    for v in visits:
-        print(
-            v.id,
-            v.visit_status,
-            v.payment_status,
-            v.fee
-        )
-
-    print("=============================")
 
     return {
         "total": len(result),

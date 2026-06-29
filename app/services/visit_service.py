@@ -480,12 +480,9 @@ def close_visit(
         payment = Payment(
             visit_id=visit.id,
             clinic_id=visit.clinic_id,
-            amount=data.fee,
-
-            # Payment is not completed yet
+            amount=float(data.fee),
             payment_mode=None,
-
-            status="PENDING"
+            status=PaymentStatus.PENDING
         )
 
         db.add(payment)
@@ -589,6 +586,14 @@ def close_visit(
         # =====================================================
 
     db.commit()
+    payment_check = db.query(Payment).filter(
+    Payment.visit_id == visit.id
+    ).first()
+
+    if payment_check is None:
+        raise Exception(
+            f"Payment row was not created for visit {visit.id}"
+        )
     db.refresh(visit)
 
     # =====================================================

@@ -57,7 +57,7 @@ class Payment(Base):
 
     payment_mode = Column(
         String,
-        nullable=False
+        nullable=True
     )
 
     # =====================================================
