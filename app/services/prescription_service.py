@@ -411,12 +411,16 @@ async def generate_prescription(
 
         try:
 
-            await send_prescription_message(
+            wa_result = await send_prescription_message(
                 phone=patient.phone_mobile,
                 patient_name=patient.first_name,
                 clinic_name=clinic.name,
                 prescription_url=secure_url,
                 support_phone=clinic.phone or ""
+            )
+
+            logger.info(
+                f"Prescription WhatsApp result: {wa_result}"
             )
 
         except Exception as e:
