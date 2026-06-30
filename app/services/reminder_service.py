@@ -288,32 +288,12 @@ async def send_due_reminders_async(
         try:
 
             result = await send_followup_reminder(
-                phone         = phone,
-                template_name = reminder["template_key"],
-                language = "en_US",
-                components    = [
-                    {
-                        "type": "body",
-                        "parameters": [
-                    {
-                        "type": "text",
-                        "text": reminder["template_vars"][0]
-                    },
-                    {
-                        "type": "text",
-                        "text": reminder["template_vars"][1]
-                    },
-                    {
-                        "type": "text",
-                        "text": reminder["template_vars"][2]
-                    },
-                ]
-                    }
-                ],
-                db         = db,
-                clinic_id  = clinic_id,
-                patient_id = reminder["patient_id"],
-                trigger    = "followup_cron"
+                phone          = phone,
+                patient_name   = reminder["template_vars"][0],
+                clinic_name    = reminder["template_vars"][1],
+                reminder_date  = reminder["template_vars"][2],
+                followup_type  = reminder.get("type", ""),
+                language       = reminder.get("language", "en"),
             )
 
             followup = db.query(FollowUp).filter(
@@ -448,40 +428,15 @@ async def send_single_reminder(
     try:
 
         result = await send_followup_reminder(
-            phone=patient.phone_mobile,
-            template_name=get_template_key(followup.type),
-            language="en_US",
-            components=[
-                {
-                    "type": "body",
-                    "parameters": [
-                        {
-                            "type": "text",
-                            "text": patient.first_name
-                        },
-                        {
-                            "type": "text",
-                            "text": (
-                                clinic.name
-                                if clinic
-                                else "Vedic Homeopathic Clinic"
-                            )
-                        },
-                        {
-                            "type": "text",
-                            "text": (
-                                followup.due_date.strftime("%d-%m-%Y")
-                                if followup.due_date
-                                else ""
-                            )
-                        }
-                    ]
-                }
-            ],
-            db=db,
-            clinic_id=clinic_id,
-            patient_id=str(patient.id),
-            trigger="manual_send"
+            phone         = patient.phone_mobile,
+            patient_name  = patient.first_name,
+            clinic_name   = clinic.name if clinic else "Vedic Homeopathic Clinic",
+            reminder_date = (
+                followup.due_date.strftime("%d-%m-%Y")
+                if followup.due_date else ""
+            ),
+            followup_type = followup.type.value if followup.type else "",
+            language      = patient.language_pref or "en",
         )
 
     except Exception as e:

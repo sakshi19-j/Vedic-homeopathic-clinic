@@ -410,15 +410,21 @@ def generate_prescription(
 
         try:
 
-            asyncio.run(
-                send_prescription_message(
-                    phone=patient.phone_mobile,
-                    patient_name=patient.first_name,
-                    clinic_name=clinic.name,
-                    prescription_url=secure_url,
-                    support_phone=clinic.phone or ""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            try:
+                loop.run_until_complete(
+                    send_prescription_message(
+                        phone=patient.phone_mobile,
+                        patient_name=patient.first_name,
+                        clinic_name=clinic.name,
+                        prescription_url=secure_url,
+                        support_phone=clinic.phone or ""
+                    )
                 )
-            )
+            finally:
+                loop.close()
 
         except Exception as e:
 
