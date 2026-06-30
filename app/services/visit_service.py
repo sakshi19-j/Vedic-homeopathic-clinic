@@ -605,17 +605,19 @@ def close_visit(
         from app.services.prescription_service import (
             generate_prescription
         )
+        import asyncio
 
         # PDF only — prescription is already sent via the
         # dedicated /prescriptions/send/{visit_id} call from
         # the doctor's prescription screen. Don't double-send.
-        generate_prescription(
-            db=db,
-            visit_id=visit.id,
-            clinic_id=visit.clinic_id,
-            send_whatsapp=False
+        asyncio.run(
+            generate_prescription(
+                db=db,
+                visit_id=visit.id,
+                clinic_id=visit.clinic_id,
+                send_whatsapp=False
+            )
         )
-
         print(
             f"Visit {visit.id} closed successfully."
         )

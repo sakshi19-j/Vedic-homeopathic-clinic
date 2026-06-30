@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # GENERATE PRESCRIPTION
 # =====================================================
 
-def generate_prescription(
+async def generate_prescription(
     db: Session,
     visit_id: str,
     clinic_id: str,
@@ -411,28 +411,19 @@ def generate_prescription(
 
         try:
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-            try:
-                loop.run_until_complete(
-                    send_prescription_message(
-                        phone=patient.phone_mobile,
-                        patient_name=patient.first_name,
-                        clinic_name=clinic.name,
-                        prescription_url=secure_url,
-                        support_phone=clinic.phone or ""
-                    )
-                )
-            finally:
-                loop.close()
+            await send_prescription_message(
+                phone=patient.phone_mobile,
+                patient_name=patient.first_name,
+                clinic_name=clinic.name,
+                prescription_url=secure_url,
+                support_phone=clinic.phone or ""
+            )
 
         except Exception as e:
 
             logger.error(
                 f"Prescription WhatsApp failed: {e}"
             )
-
     # =================================================
     # RESPONSE
     # =================================================

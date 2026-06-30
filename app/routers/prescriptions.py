@@ -43,7 +43,7 @@ router = APIRouter(
 # =====================================================
 
 @router.post("/generate/{visit_id}")
-def create_prescription(
+async def create_prescription(
      visit_id: str,
      db: Session = Depends(get_db),
      current_user: User = Depends(
@@ -52,7 +52,7 @@ def create_prescription(
 ):
      # PDF only — does NOT message the patient.
      # Use /send/{visit_id} to deliver via WhatsApp.
-     return generate_prescription(
+     return await generate_prescription(
          db,
          visit_id,
          current_user.clinic_id,
@@ -65,7 +65,7 @@ def create_prescription(
 # =====================================================
 
 @router.get("/download/{visit_id}")
-def download_prescription(
+async def download_prescription(
 
     visit_id: str,
 
@@ -76,7 +76,7 @@ def download_prescription(
     )
 ):
 
-    result = generate_prescription(
+    result = await generate_prescription(
 
         db,
 
@@ -198,7 +198,7 @@ async def send_prescription_whatsapp(
     # consistent no matter which route is hit)
     # =================================================
 
-    result = generate_prescription(
+    result = await generate_prescription(
         db,
         visit_id,
         current_user.clinic_id
