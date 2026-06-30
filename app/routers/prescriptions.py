@@ -44,23 +44,19 @@ router = APIRouter(
 
 @router.post("/generate/{visit_id}")
 def create_prescription(
-
-    visit_id: str,
-
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
+     visit_id: str,
+     db: Session = Depends(get_db),
+     current_user: User = Depends(
         doctor_only
     )
 ):
-
-    return generate_prescription(
-
-        db,
-
-        visit_id,
-
-        current_user.clinic_id
+     # PDF only — does NOT message the patient.
+     # Use /send/{visit_id} to deliver via WhatsApp.
+     return generate_prescription(
+         db,
+         visit_id,
+         current_user.clinic_id,
+         send_whatsapp=False
     )
 
 

@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 def generate_prescription(
     db: Session,
     visit_id: str,
-    clinic_id: str
+    clinic_id: str,
+    send_whatsapp: bool = True
 ) -> dict:
 
     # =================================================
@@ -406,7 +407,7 @@ def generate_prescription(
     # WHATSAPP
     # =================================================
 
-    if patient.phone_mobile:
+    if send_whatsapp and patient.phone_mobile:
 
         try:
 

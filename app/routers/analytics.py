@@ -5,7 +5,8 @@ from app.database import get_db
 from app.services import analytics_service
 from app.middleware.auth_middleware import (
     require_plan,
-    block_receptionist_from_revenue
+    block_receptionist_from_revenue,
+    check_subscription_with_grace
 )
 from app.models.user import User
 
@@ -26,7 +27,7 @@ from app.middleware.auth_middleware import (
 def get_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(block_receptionist_from_revenue),
-    _: User = Depends(require_plan("growth"))
+    _: User = Depends(check_subscription_with_grace)
 ):
     clinic_id = current_user.clinic_id
 
@@ -59,7 +60,7 @@ def get_dashboard(
 def summary_today(
     db: Session = Depends(get_db),
     current_user: User = Depends(block_receptionist_from_revenue),
-    _: User = Depends(require_plan("starter"))
+    _: User = Depends(check_subscription_with_grace)
 ):
     """
     Lightweight summary for frontend dashboard widgets.
