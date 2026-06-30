@@ -413,12 +413,12 @@ async def generate_prescription(
 
             wa_result = await send_prescription_message(
                 phone=patient.phone_mobile,
-                patient_name=patient.first_name,
-                clinic_name=clinic.name,
+                patient_name=patient.first_name or "Patient",
+                clinic_name=clinic.name or "Your Clinic",
                 prescription_url=secure_url,
-                support_phone=clinic.phone or ""
+                support_phone=clinic.phone or "N/A"
             )
-
+            
             logger.info(
                 f"Prescription WhatsApp result: {wa_result}"
             )
