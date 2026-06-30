@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
+import pytz
 
 from app.models.visit import Visit, PaymentStatus
 from app.models.patient import Patient
@@ -11,19 +12,21 @@ from app.models.reminder import (
     DeliveryStatus
 )
 
+IST = pytz.timezone("Asia/Kolkata")
+
 # ─────────────────────────────────────────────
 # DAILY REVENUE
 # ─────────────────────────────────────────────
 def daily_revenue(db: Session, clinic_id: str):
 
-    today = datetime.utcnow().date()
+    today = datetime.now(IST).date()
 
     revenue = db.query(
         func.sum(Visit.fee)
     ).filter(
         Visit.clinic_id == clinic_id,
         Visit.payment_status == PaymentStatus.PAID,
-        func.date(Visit.visit_date) == today
+        func.date(Visit.closed_at) == today
     ).scalar()
 
     return {
@@ -37,20 +40,17 @@ def daily_revenue(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 def weekly_revenue(db: Session, clinic_id: str):
 
-    today = datetime.utcnow().date()
+    today = datetime.now(IST).date()
 
     days = []
-
     for i in range(6, -1, -1):
-
         day = today - timedelta(days=i)
-
         revenue = db.query(
             func.sum(Visit.fee)
         ).filter(
             Visit.clinic_id == clinic_id,
             Visit.payment_status == PaymentStatus.PAID,
-            func.date(Visit.visit_date) == day
+            func.date(Visit.closed_at) == day
         ).scalar()
 
         days.append({
@@ -70,15 +70,15 @@ def weekly_revenue(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 def monthly_revenue(db: Session, clinic_id: str):
 
-    now = datetime.utcnow()
+    now = datetime.now(IST)
 
     revenue = db.query(
         func.sum(Visit.fee)
     ).filter(
         Visit.clinic_id == clinic_id,
         Visit.payment_status == PaymentStatus.PAID,
-        func.extract("month", Visit.visit_date) == now.month,
-        func.extract("year", Visit.visit_date) == now.year
+        func.extract("month", Visit.closed_at) == now.month,
+        func.extract("year", Visit.closed_at) == now.year
     ).scalar()
 
     return {
