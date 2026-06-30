@@ -76,7 +76,7 @@ def get_payment(
 # =========================================================
 
 @router.post("/receipt/{visit_id}")
-def generate_receipt(
+async def generate_receipt(
     visit_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
@@ -87,7 +87,7 @@ def generate_receipt(
     Returns permanent public URL.
     """
 
-    return billing_service.generate_receipt(
+    return await billing_service.generate_receipt(
         db,
         visit_id,
         current_user.clinic_id
@@ -336,7 +336,7 @@ def get_pending_payments(
 # =========================================================
 
 @router.post("/collect/{visit_id}")
-def collect_payment(
+async def collect_payment(
     visit_id: str,
     payload: CollectPaymentRequest,
     db: Session = Depends(get_db),
@@ -383,7 +383,7 @@ def collect_payment(
     # GENERATE RECEIPT + SEND WHATSAPP
     # ============================================
 
-    receipt = billing_service.generate_receipt(
+    receipt = await billing_service.generate_receipt(
         db=db,
         visit_id=visit.id,
         clinic_id=current_user.clinic_id
@@ -403,7 +403,7 @@ def collect_payment(
 # =========================================================
 
 @router.post("/{visit_id}/mark-paid")
-def mark_paid(
+async def mark_paid(
     visit_id: str,
     payload: CollectPaymentRequest,
     db: Session = Depends(get_db),
@@ -416,7 +416,7 @@ def mark_paid(
     Redirect internally to collect_payment().
     """
 
-    return collect_payment(
+    return await collect_payment(
         visit_id=visit_id,
         payload=payload,
         db=db,

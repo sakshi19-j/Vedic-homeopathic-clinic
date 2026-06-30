@@ -63,7 +63,7 @@ def get_payment_by_visit(
 # GENERATE RECEIPT
 # =====================================================
 
-def generate_receipt(
+async def generate_receipt(
     db: Session,
     visit_id: str,
     clinic_id: str
@@ -130,35 +130,38 @@ def generate_receipt(
         # Clinic
         clinic_name=(
             clinic.name
-            if clinic else
-            "Vedic Homoeopathic Clinic"
+            if clinic and clinic.name
+            else "Vedic Homoeopathic Clinic"
         ),
 
         doctor_name=(
             clinic.doctor_name
-            if clinic else
-            "Doctor"
+            if clinic and clinic.doctor_name
+            else "Doctor"
         ),
 
         qualification=(
             clinic.qualification
-            if clinic else
-            "B.H.M.S."
+            if clinic and clinic.qualification
+            else "B.H.M.S."
         ),
 
         clinic_address=(
             clinic.address
-            if clinic else ""
+            if clinic and clinic.address
+            else ""
         ),
 
         clinic_phone=(
             clinic.phone
-            if clinic else ""
+            if clinic and clinic.phone
+            else ""
         ),
 
         clinic_timings=(
             clinic.timings
-            if clinic else ""
+            if clinic and clinic.timings
+            else ""
         ),
 
         # Patient
@@ -322,40 +325,23 @@ def generate_receipt(
 
         if patient and patient.phone_mobile:
 
-            import asyncio
-
-            loop = asyncio.new_event_loop()
-
-            asyncio.set_event_loop(loop)
-
-            whatsapp_result = loop.run_until_complete(
-
-               send_billing_receipt(
+            whatsapp_result = await send_billing_receipt(
                 phone=patient.phone_mobile,
                 patient_name=receipt_data.patient_name,
                 clinic_name=receipt_data.clinic_name,
                 receipt_url=pdf_url,
                 amount=str(receipt_data.amount)
             )
-            )
 
             from app.services.whatsapp_service import (
                 send_thankyou_message
             )
 
-            loop.run_until_complete(
-
-                send_thankyou_message(
-
-                    phone=patient.phone_mobile,
-
-                    patient_name=receipt_data.patient_name,
-
-                    clinic_name=receipt_data.clinic_name
-                )
+            await send_thankyou_message(
+                phone=patient.phone_mobile,
+                patient_name=receipt_data.patient_name,
+                clinic_name=receipt_data.clinic_name
             )
-
-            loop.close()
 
     except Exception as e:
 
