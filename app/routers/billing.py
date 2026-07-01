@@ -422,3 +422,65 @@ async def mark_paid(
         db=db,
         current_user=current_user
     )
+
+# =====================================================
+# BILLING INVOICES (alias for admin billing page)
+# =====================================================
+
+@router.get("/invoices")
+def list_invoices(
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(receptionist_or_doctor)
+):
+    """
+    Paid visit history for the admin billing page.
+    Returns last 50 paid visits with patient name,
+    amount, payment mode, and timestamp.
+    """
+
+    from app.models.patient import Patient
+
+    visits = (
+        db.query(Visit)
+        .filter(
+            Visit.clinic_id     == current_user.clinic_id,
+            Visit.payment_status == PaymentStatus.PAID
+        )
+        .order_by(Visit.closed_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    result = []
+
+    for v in visits:
+
+        patient = db.query(Patient).filter(
+            Patient.id == v.patient_id
+        ).first()
+
+        result.append({
+            "id":           str(v.id),
+            "patient_name": (
+                f"{patient.first_name} {patient.last_name or ''}".strip()
+                if patient else "Unknown"
+            ),
+            "patient_reg":  (
+                f"VNC-{str(patient.reg_no).zfill(4)}"
+                if patient and patient.reg_no else ""
+            ),
+            "amount":       float(v.fee or 0),
+            "payment_mode": v.payment_mode or "—",
+            "mode":         v.payment_mode or "—",
+            "status":       "PAID",
+            "issued_at":    (
+                v.closed_at.isoformat()
+                if v.closed_at else None
+            ),
+            "created_at":   (
+                v.closed_at.isoformat()
+                if v.closed_at else None
+            ),
+        })
+
+    return result

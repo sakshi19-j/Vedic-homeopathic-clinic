@@ -64,7 +64,7 @@ def _format_appointment(a: Appointment, patient: Patient) -> dict:
             patient.phone_mobile if patient else None
         ),
         "scheduled_at": (
-            a.scheduled_at.strftime("%d-%m-%Y %H:%M")
+            a.scheduled_at.isoformat()
             if a.scheduled_at else None
         ),
         "visit_type":      a.visit_type,
