@@ -6,7 +6,8 @@ from app.services import analytics_service
 from app.middleware.auth_middleware import (
     require_plan,
     block_receptionist_from_revenue,
-    check_subscription_with_grace
+    check_subscription_with_grace,
+    get_current_user
 )
 from app.models.user import User
 
@@ -85,10 +86,9 @@ def summary_today(
 def get_daily_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(block_receptionist_from_revenue),
-    _: User = Depends(require_plan("starter"))
+    _: User = Depends(check_subscription_with_grace)
 ):
     return analytics_service.daily_revenue(db, current_user.clinic_id)
-
 
 # ─────────────────────────────────────────────
 # REVENUE — WEEKLY (last 7 days breakdown)
@@ -152,20 +152,14 @@ def get_retention(
 ):
     return analytics_service.retention_rate(db, current_user.clinic_id)
 
-
-# ─────────────────────────────────────────────
-# TOP PATIENTS
-# ─────────────────────────────────────────────
-
 @router.get("/patients/top")
 def get_top_patients(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_plan("growth"))
+    current_user: User = Depends(get_current_user),
+    _: User = Depends(check_subscription_with_grace)
 ):
     return analytics_service.top_patients(db, current_user.clinic_id, limit)
-
-
 # ─────────────────────────────────────────────
 # TOP DISEASES
 # ─────────────────────────────────────────────
@@ -182,14 +176,13 @@ def get_top_diseases(
 # ─────────────────────────────────────────────
 # FOLLOWUPS DUE TODAY
 # ─────────────────────────────────────────────
-
 @router.get("/followups/today")
 def get_followups_today(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_plan("starter"))
+    current_user: User = Depends(get_current_user),
+    _: User = Depends(check_subscription_with_grace)
 ):
     return analytics_service.followups_due_today(db, current_user.clinic_id)
-
 
 # ─────────────────────────────────────────────
 # WHATSAPP DELIVERY RATE
