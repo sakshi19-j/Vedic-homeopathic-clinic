@@ -116,6 +116,8 @@ async def _job_birthday_messages(db):
         from app.models.clinic import Clinic
         from app.services.whatsapp_service import send_birthday_message
 
+        import pytz
+        IST = pytz.timezone("Asia/Kolkata")
         today = datetime.now(IST).date()
         logger.info(f"🎂 Birthday messages for {today}")
 
