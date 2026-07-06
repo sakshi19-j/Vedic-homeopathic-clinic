@@ -2,7 +2,8 @@ import asyncio
 import logging
 import pytz
 from datetime import datetime, timedelta
-
+import pytz
+IST = pytz.timezone("Asia/Kolkata")
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
