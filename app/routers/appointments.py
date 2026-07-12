@@ -324,7 +324,6 @@ def checkin_appointment(
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
-
     appt = db.query(Appointment).filter(
         Appointment.id == appointment_id,
         Appointment.clinic_id == current_user.clinic_id
@@ -336,23 +335,40 @@ def checkin_appointment(
             detail="Appointment not found"
         )
 
+    if not appt.patient_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Appointment has no linked patient"
+        )
+
     from app.schemas.queue import QueueAdd
     from app.services.queue_service import add_to_queue
 
-    result = add_to_queue(
-        db=db,
-        clinic_id=current_user.clinic_id,
-        data=QueueAdd(
-            patient_id=appt.patient_id,
-            visit_type="HOMEOPATHY"
+    try:
+        result = add_to_queue(
+            db=db,
+            clinic_id=current_user.clinic_id,
+            data=QueueAdd(
+                patient_id=str(appt.patient_id),
+                visit_type=appt.visit_type or "HOMEOPATHY",
+                notes=appt.chief_complaint or None,
+            )
         )
-    )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not add to queue: {str(e)}"
+        )
 
     appt.status = "CHECKED_IN"
-
     db.commit()
 
-    return result
+    return {
+        "message": "Patient checked in and added to queue",
+        "appointment_id": appointment_id,
+        "patient_id": str(appt.patient_id),
+        **(result if isinstance(result, dict) else {})
+    }
         
 # =========================================================
 # Cancel Appointment
