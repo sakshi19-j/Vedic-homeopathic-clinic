@@ -347,7 +347,7 @@ def checkin_appointment(
     try:
         result = add_to_queue(
             db=db,
-            clinic_id=current_user.clinic_id,
+            clinic_id=str(current_user.clinic_id),
             data=QueueAdd(
                 patient_id=str(appt.patient_id),
                 visit_type=appt.visit_type or "HOMEOPATHY",
@@ -355,6 +355,11 @@ def checkin_appointment(
             )
         )
     except Exception as e:
+        # Log the actual error for debugging
+        import logging
+        logging.getLogger(__name__).error(
+            f"Queue add failed for patient {appt.patient_id}: {e}"
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Could not add to queue: {str(e)}"

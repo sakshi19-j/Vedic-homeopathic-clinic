@@ -19,18 +19,25 @@ IST = pytz.timezone("Asia/Kolkata")
 # ─────────────────────────────────────────────
 def daily_revenue(db: Session, clinic_id: str):
 
-    today = datetime.now(IST).date()
+    now_ist = datetime.now(IST)
+    start_of_day = IST.localize(
+        datetime(now_ist.year, now_ist.month, now_ist.day, 0, 0, 0)
+    )
+    end_of_day = IST.localize(
+        datetime(now_ist.year, now_ist.month, now_ist.day, 23, 59, 59)
+    )
 
     revenue = db.query(
         func.sum(Visit.fee)
     ).filter(
         Visit.clinic_id == clinic_id,
         Visit.payment_status == PaymentStatus.PAID,
-        func.date(Visit.closed_at) == today
+        Visit.closed_at >= start_of_day,
+        Visit.closed_at <= end_of_day
     ).scalar()
 
     return {
-        "date": str(today),
+        "date": now_ist.strftime("%Y-%m-%d"),
         "revenue": float(revenue or 0)
     }
 
@@ -40,22 +47,29 @@ def daily_revenue(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 def weekly_revenue(db: Session, clinic_id: str):
 
-    today = datetime.now(IST).date()
-
+    now_ist = datetime.now(IST)
     days = []
+
     for i in range(6, -1, -1):
-        day = today - timedelta(days=i)
+        day_ist = now_ist - timedelta(days=i)
+        start = IST.localize(
+            datetime(day_ist.year, day_ist.month, day_ist.day, 0, 0, 0)
+        )
+        end = IST.localize(
+            datetime(day_ist.year, day_ist.month, day_ist.day, 23, 59, 59)
+        )
         revenue = db.query(
             func.sum(Visit.fee)
         ).filter(
             Visit.clinic_id == clinic_id,
             Visit.payment_status == PaymentStatus.PAID,
-            func.date(Visit.closed_at) == day
+            Visit.closed_at >= start,
+            Visit.closed_at <= end
         ).scalar()
 
         days.append({
-            "date": str(day),
-            "day": day.strftime("%a"),
+            "date": day_ist.strftime("%Y-%m-%d"),
+            "day": day_ist.strftime("%a"),
             "revenue": float(revenue or 0)
         })
 
@@ -70,19 +84,30 @@ def weekly_revenue(db: Session, clinic_id: str):
 # ─────────────────────────────────────────────
 def monthly_revenue(db: Session, clinic_id: str):
 
-    now = datetime.now(IST)
+    now_ist = datetime.now(IST)
+    start_of_month = IST.localize(
+        datetime(now_ist.year, now_ist.month, 1, 0, 0, 0)
+    )
+    if now_ist.month == 12:
+        end_of_month = IST.localize(
+            datetime(now_ist.year + 1, 1, 1, 0, 0, 0)
+        ) - timedelta(seconds=1)
+    else:
+        end_of_month = IST.localize(
+            datetime(now_ist.year, now_ist.month + 1, 1, 0, 0, 0)
+        ) - timedelta(seconds=1)
 
     revenue = db.query(
         func.sum(Visit.fee)
     ).filter(
         Visit.clinic_id == clinic_id,
         Visit.payment_status == PaymentStatus.PAID,
-        func.extract("month", Visit.closed_at) == now.month,
-        func.extract("year", Visit.closed_at) == now.year
+        Visit.closed_at >= start_of_month,
+        Visit.closed_at <= end_of_month
     ).scalar()
 
     return {
-        "month": now.strftime("%B"),
+        "month": now_ist.strftime("%B"),
         "revenue": float(revenue or 0)
     }
 
