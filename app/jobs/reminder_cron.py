@@ -2,8 +2,6 @@ import asyncio
 import logging
 import pytz
 from datetime import datetime, timedelta
-import pytz
-IST = pytz.timezone("Asia/Kolkata")
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
@@ -12,8 +10,9 @@ from app.config import settings
 from app.services.growth_service import flag_missed_patients
 from app.services.reminder_service import send_due_reminders
 from app.models.visit import VisitStatus
+
 logger = logging.getLogger(__name__)
-IST    = pytz.timezone("Asia/Kolkata")
+IST = pytz.timezone("Asia/Kolkata")
 
 _scheduler = None
 
