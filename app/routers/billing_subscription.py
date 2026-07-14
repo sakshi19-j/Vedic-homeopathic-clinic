@@ -53,24 +53,15 @@ IST = pytz.timezone("Asia/Kolkata")
 # =====================================================
 
 PLAN_MAP = {
-
-    "starter_monthly":
-        "RAZORPAY_STARTER_MONTHLY",
-
-    "starter_yearly":
-        "RAZORPAY_STARTER_YEARLY",
-
-    "growth_monthly":
-        "RAZORPAY_GROWTH_MONTHLY",
-
-    "growth_yearly":
-        "RAZORPAY_GROWTH_YEARLY",
-
-    "clinicpro_monthly":
-        "RAZORPAY_CLINICPRO_MONTHLY",
-
-    "clinicpro_yearly":
-        "RAZORPAY_CLINICPRO_YEARLY",
+    "starter_monthly":    "RAZORPAY_STARTER_MONTHLY",
+    "starter_6month":     "RAZORPAY_STARTER_6MONTH",
+    "starter_yearly":     "RAZORPAY_STARTER_YEARLY",
+    "growth_monthly":     "RAZORPAY_GROWTH_MONTHLY",
+    "growth_6month":      "RAZORPAY_GROWTH_6MONTH",
+    "growth_yearly":      "RAZORPAY_GROWTH_YEARLY",
+    "clinicpro_monthly":  "RAZORPAY_CLINICPRO_MONTHLY",
+    "clinicpro_6month":   "RAZORPAY_CLINICPRO_6MONTH",
+    "clinicpro_yearly":   "RAZORPAY_CLINICPRO_YEARLY",
 }
 
 

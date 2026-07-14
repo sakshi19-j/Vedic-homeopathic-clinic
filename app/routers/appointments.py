@@ -355,15 +355,16 @@ def checkin_appointment(
             )
         )
     except Exception as e:
-        # Log the actual error for debugging
-        import logging
-        logging.getLogger(__name__).error(
-            f"Queue add failed for patient {appt.patient_id}: {e}"
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=f"Could not add to queue: {str(e)}"
-        )
+            import logging
+            logging.getLogger(__name__).error(
+                f"Checkin failed for appt {appointment_id}, "
+                f"patient {appt.patient_id}, "
+                f"clinic {current_user.clinic_id}: {str(e)}"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not add to queue: {str(e)}"
+            )
 
     appt.status = "CHECKED_IN"
     db.commit()

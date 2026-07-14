@@ -280,44 +280,73 @@ def update_status(
 # =====================================================
 # LIST VISITS FOR PATIENT
 # =====================================================
-
+from app.models.visit import Visit
 @router.get("/patient/{patient_id}")
-def list_patient_visits(
+def get_patient_visits(
     patient_id: str,
-    skip:  int = 0,
-    limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(receptionist_or_doctor)
+    current_user = Depends(get_current_user)
 ):
-    """
-    All visits for a patient — newest first.
-    Used in patient history timeline.
-    """
-    from app.models.visit import Visit
+    from app.models.medicine import Medicine
+    from app.models.reminder import FollowUp
 
     visits = db.query(Visit).filter(
         Visit.patient_id == patient_id,
-        Visit.clinic_id  == current_user.clinic_id
-    ).order_by(
-        Visit.visit_date.desc()
-    ).offset(skip).limit(limit).all()
+        Visit.clinic_id == current_user.clinic_id
+    ).order_by(Visit.created_at.desc()).all()
 
-    return {
-        "total": len(visits),
-        "visits": [
+    result = []
+    for v in visits:
+        # Get medicines for this visit
+        medicines = db.query(Medicine).filter(
+            Medicine.visit_id == str(v.id)
+        ).all()
+
+        medicine_list = [
             {
-                "id":             v.id,
-                "type":           v.type.value if v.type else None,
-                "visit_status":   v.visit_status,
-                "chief_complaint": v.chief_complaint,
-                "fee":            float(v.fee or 0),
-                "payment_status": v.payment_status.value if v.payment_status else None,
-                "visit_date":     v.visit_date.strftime("%d-%m-%Y %H:%M") if v.visit_date else None,
-                "closed_at":      v.closed_at.strftime("%d-%m-%Y %H:%M") if v.closed_at else None,
+                "name": m.name,
+                "potency": m.potency,
+                "timing": m.timing,
+                "days": m.days,
+                "food_relation": m.food_relation,
+                "notes": m.notes,
             }
-            for v in visits
+            for m in medicines
         ]
-    }
+
+        # Get followup date
+        followup = db.query(FollowUp).filter(
+            FollowUp.visit_id == str(v.id)
+        ).order_by(FollowUp.created_at.desc()).first()
+
+        result.append({
+            "id": str(v.id),
+            "visit_date": v.visit_date.isoformat() if v.visit_date else None,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "closed_at": v.closed_at.isoformat() if v.closed_at else None,
+            "chief_complaint": v.chief_complaint,
+            "visit_type": str(v.visit_type) if v.visit_type else None,
+            "visit_status": str(v.visit_status) if v.visit_status else None,
+            "payment_status": str(v.payment_status) if v.payment_status else None,
+            "fee": float(v.fee) if v.fee else 0,
+            "diagnosis": getattr(v, "diagnosis", None),
+            "advice": getattr(v, "advice", None),
+            "notes": getattr(v, "notes", None),
+            "remedy": getattr(v, "remedy", None),
+            "potency": getattr(v, "potency", None),
+            "patient_rx": getattr(v, "patient_rx", None),
+            "medicines": medicine_list,
+            "followup_date": (
+                followup.due_date.isoformat()
+                if followup and followup.due_date else None
+            ),
+            "followup_type": (
+                str(followup.type)
+                if followup and followup.type else None
+            ),
+        })
+
+    return result
 
 
 # =====================================================
