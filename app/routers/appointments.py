@@ -16,7 +16,7 @@ from app.models.patient import Patient
 from app.models.user import User
 
 from app.enums import AppointmentStatus, VisitType
-
+import logging
 import pytz
 
 
@@ -330,19 +330,14 @@ def checkin_appointment(
     ).first()
 
     if not appt:
-        raise HTTPException(
-            status_code=404,
-            detail="Appointment not found"
-        )
+        raise HTTPException(status_code=404, detail="Appointment not found")
 
     if not appt.patient_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Appointment has no linked patient"
-        )
+        raise HTTPException(status_code=400, detail="Appointment has no linked patient")
 
     from app.schemas.queue import QueueAdd
-    from app.services.queue_service import add_to_queue
+    from app.services.queue_service import add_to_queue, now_ist
+    from app.models.queue import Queue
 
     try:
         result = add_to_queue(
@@ -351,20 +346,26 @@ def checkin_appointment(
             data=QueueAdd(
                 patient_id=str(appt.patient_id),
                 visit_type=appt.visit_type or "HOMEOPATHY",
+                priority=0,
                 notes=appt.chief_complaint or None,
             )
         )
+    except HTTPException as e:
+        if e.status_code == 400 and "already in queue" in str(e.detail).lower():
+            existing = db.query(Queue).filter(
+                Queue.clinic_id == current_user.clinic_id,
+                Queue.patient_id == str(appt.patient_id),
+                Queue.queue_date == now_ist().date(),
+            ).first()
+            result = {
+                "message": "Already in queue",
+                "token_number": existing.token_number if existing else None
+            }
+        else:
+            raise
     except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(
-                f"Checkin failed for appt {appointment_id}, "
-                f"patient {appt.patient_id}, "
-                f"clinic {current_user.clinic_id}: {str(e)}"
-            )
-            raise HTTPException(
-                status_code=500,
-                detail=f"Could not add to queue: {str(e)}"
-            )
+        logging.getLogger(__name__).error(f"Checkin failed for appt {appointment_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not add to queue: {e}")
 
     appt.status = "CHECKED_IN"
     db.commit()

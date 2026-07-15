@@ -23,12 +23,13 @@ from app.middleware.auth_middleware import (
 
 logger = logging.getLogger(__name__)
 
+from app.middleware.subscription_middleware import require_active_subscription
+
 router = APIRouter(
     prefix="/patients",
-    tags=["Patients"]
+    tags=["Patients"],
+    dependencies=[Depends(require_active_subscription)]   # ADD THIS
 )
-
-
 # =====================================================
 # CREATE PATIENT
 # =====================================================
