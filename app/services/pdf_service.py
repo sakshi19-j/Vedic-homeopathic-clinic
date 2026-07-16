@@ -561,320 +561,133 @@ def generate_prescription_pdf(
     doctor: dict,
     patient: dict
 ) -> bytes:
-
     buf = io.BytesIO()
-
-    c = canvas.Canvas(
-        buf,
-        pagesize=A4
-    )
-
+    c = canvas.Canvas(buf, pagesize=A4)
     W, H = A4
 
-    # =================================================
-    # THEME
-    # =================================================
+    PRIMARY = colors.HexColor("#5B21B6")   # deep purple
+    LIGHT   = colors.HexColor("#EDE9FE")   # pale lavender
+    TEXT    = colors.HexColor("#1F2937")
 
-    theme = clinic.get(
-        "prescription_theme",
-        "CLASSIC_BLUE"
-    )
+    # ---------- Decorative curve (top-right wave) ----------
+    c.saveState()
+    p = c.beginPath()
+    p.moveTo(W, H)
+    p.lineTo(W - 70*mm, H)
+    p.curveTo(W - 40*mm, H - 10*mm, W - 20*mm, H - 25*mm, W, H - 55*mm)
+    p.close()
+    c.setFillColor(colors.HexColor("#C4B5FD"))
+    c.drawPath(p, fill=1, stroke=0)
+    c.restoreState()
 
-    if theme == "GREEN_MODERN":
+    # ---------- Clinic name ----------
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 30)
+    c.drawString(15*mm, H - 30*mm, clinic.get("name", "Clinic").upper())
+    c.setLineWidth(2)
+    c.line(15*mm, H - 34*mm, 65*mm, H - 34*mm)
 
-        PRIMARY, SECONDARY = draw_green_modern(
-            c,
-            W,
-            H
-        )
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(15*mm, H - 44*mm, "Doctor")
+    c.setFont("Helvetica", 10)
+    c.drawString(15*mm, H - 50*mm, doctor.get("qualification", ""))
 
-    elif theme == "LUXURY_GOLD":
+    # ---------- Contact block (right) ----------
+    c.setFont("Helvetica", 9)
+    c.drawString(120*mm, H - 22*mm, clinic.get("phone", ""))
+    c.drawString(120*mm, H - 29*mm, clinic.get("email", ""))
+    c.drawString(120*mm, H - 36*mm, clinic.get("address", ""))
 
-        PRIMARY, SECONDARY = draw_luxury_gold(
-            c,
-            W,
-            H
-        )
+    # ---------- Patient info bar ----------
+    y_bar = H - 68*mm
+    c.setFillColor(LIGHT)
+    c.roundRect(15*mm, y_bar, W - 30*mm, 20*mm, 3*mm, fill=1, stroke=0)
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(20*mm, y_bar + 14*mm, "PATIENT NAME")
+    c.drawString(90*mm, y_bar + 14*mm, "DATE")
+    c.drawString(140*mm, y_bar + 14*mm, "AGE / GENDER")
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(20*mm, y_bar + 6*mm, patient.get("name", ""))
+    c.setFont("Helvetica", 11)
+    c.drawString(90*mm, y_bar + 6*mm, datetime.now().strftime("%d %b %Y"))
+    c.drawString(140*mm, y_bar + 6*mm, f"{patient.get('age','–')} / {patient.get('gender','–')}")
 
-    else:
-
-        PRIMARY, SECONDARY = draw_classic_blue(
-            c,
-            W,
-            H
-        )
-
-    # =================================================
-    # LOGO
-    # =================================================
-
-    logo = _load_image(
-        clinic.get("logo_url")
-    )
-
-    if logo:
-
-        try:
-
-            c.drawImage(
-                logo,
-                15 * mm,
-                H - 52 * mm,
-                width=30 * mm,
-                height=30 * mm,
-                preserveAspectRatio=True,
-                mask="auto"
-            )
-
-        except Exception as e:
-
-            logger.warning(
-                f"Logo draw error: {e}"
-            )
-
-    # =================================================
-    # HEADER
-    # =================================================
-
+    # ---------- PRESCRIPTION tab ----------
+    y_tab = y_bar - 14*mm
+    c.setFillColor(PRIMARY)
+    c.rect(15*mm, y_tab, 55*mm, 9*mm, fill=1, stroke=0)
     c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(19*mm, y_tab + 3*mm, "PRESCRIPTION")
 
-    c.setFont(
-        "Helvetica-Bold",
-        18
-    )
+    # ---------- Table ----------
+    medicines = visit.get("medicines", [])
+    col_x = [15*mm, 30*mm, 100*mm, 145*mm, W - 15*mm]
+    row_y = y_tab - 2*mm
+    c.setFillColor(LIGHT)
+    c.rect(15*mm, row_y - 8*mm, W - 30*mm, 8*mm, fill=1, stroke=0)
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 8)
+    headers = ["Sr.", "Instruction / Test", "Timing", "Duration"]
+    for i, h in enumerate(headers):
+        c.drawString(col_x[i] + 2*mm, row_y - 5.5*mm, h)
 
-    c.drawString(
-        55 * mm,
-        H - 20 * mm,
-        clinic.get(
-            "name",
-            "Clinic"
-        )
-    )
+    row_y -= 8*mm
+    c.setStrokeColor(colors.HexColor("#DDD6FE"))
+    for idx, med in enumerate(medicines, start=1):
+        row_h = 14*mm
+        c.rect(15*mm, row_y - row_h, W - 30*mm, row_h, stroke=1, fill=0)
+        c.setFillColor(TEXT)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(col_x[0] + 2*mm, row_y - 6*mm, str(idx))
+        c.drawString(col_x[1] + 2*mm, row_y - 5*mm, f"{med.get('name','')} {med.get('dosage','')}".strip())
+        c.setFont("Helvetica", 9)
+        c.drawString(col_x[1] + 2*mm, row_y - 10*mm, med.get("food_relation", ""))
+        c.drawString(col_x[2] + 2*mm, row_y - 6*mm, med.get("timing", ""))
+        c.drawString(col_x[3] + 2*mm, row_y - 6*mm, f"{med.get('duration','')} Days")
+        row_y -= row_h
 
-    c.setFont(
-        "Helvetica",
-        11
-    )
+    # ---------- Advice box ----------
+    advice_y = row_y - 8*mm
+    c.setStrokeColor(colors.HexColor("#DDD6FE"))
+    c.roundRect(15*mm, advice_y - 22*mm, W - 30*mm, 22*mm, 3*mm, stroke=1, fill=0)
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(19*mm, advice_y - 6*mm, "ADVICE:")
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica", 9)
+    c.drawString(19*mm, advice_y - 13*mm, visit.get("advice", ""))
 
-    c.drawString(
-        55 * mm,
-        H - 30 * mm,
-        f"Dr. {doctor.get('name', '')}"
-    )
+    # ---------- Signature ----------
+    sig_y = advice_y - 32*mm
+    c.setStrokeColor(TEXT)
+    c.line(W - 65*mm, sig_y, W - 20*mm, sig_y)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(W - 42*mm, sig_y - 5*mm, "Signature")
 
-    c.drawString(
-        55 * mm,
-        H - 37 * mm,
-        doctor.get(
-            "qualification",
-            ""
-        )
-    )
-
-    c.drawString(
-        55 * mm,
-        H - 44 * mm,
-        clinic.get(
-            "phone",
-            ""
-        )
-    )
-
-    c.drawString(
-        55 * mm,
-        H - 51 * mm,
-        clinic.get(
-            "address",
-            ""
-        )
-    )
-
-    # =================================================
-    # PATIENT INFO
-    # =================================================
-
-    c.setFillColor(TEXT_DARK)
-
-    c.setFont(
-        "Helvetica-Bold",
-        10
-    )
-
-    c.drawString(
-        15 * mm,
-        H - 72 * mm,
-        f"Patient: "
-        f"{patient.get('name', '')}"
-    )
-
-    c.drawString(
-        90 * mm,
-        H - 72 * mm,
-        f"Age/Gender: "
-        f"{patient.get('age', '')} / "
-        f"{patient.get('gender', '')}"
-    )
-
-    c.drawString(
-        160 * mm,
-        H - 72 * mm,
-        datetime.now().strftime(
-            "%d %b %Y"
-        )
-    )
-
-    # =================================================
-    # QR
-    # =================================================
-
-    backend_url = visit.get(
-        "backend_url",
-        ""
-    )
-
-    token = visit.get(
-        "token",
-        ""
-    )
-
-    # FIXED QR URL
-    qr_url = (
-        f"{backend_url}"
-        f"/prescriptions/rx/{token}"
-    )
-
-    try:
-
-        qr = qrcode.make(
-            qr_url
-        )
-
-        qr_buffer = BytesIO()
-
-        qr.save(qr_buffer)
-
-        qr_buffer.seek(0)
-
-        c.drawImage(
-            ImageReader(qr_buffer),
-            W - 45 * mm,
-            H - 110 * mm,
-            width=25 * mm,
-            height=25 * mm
-        )
-
-    except Exception as e:
-
-        logger.warning(
-            f"QR error: {e}"
-        )
-
-    # =================================================
-    # RX SYMBOL
-    # =================================================
+    # ---------- Footer (4 columns) ----------
+    footer_y = 25*mm
+    c.setFillColor(colors.HexColor("#F5F3FF"))
+    c.rect(0, 0, W, footer_y + 5*mm, fill=1, stroke=0)
+    labels = [("CARE", "Compassionate care"), ("TRUST", "Trusted homeopathy"),
+              ("NATURAL", "Natural healing"), ("WELLNESS", "Your wellness first")]
+    col_w = W / 4
+    for i, (title, sub) in enumerate(labels):
+        x = i * col_w + 15*mm
+        c.setFillColor(PRIMARY)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(x, footer_y, title)
+        c.setFillColor(TEXT)
+        c.setFont("Helvetica", 7)
+        c.drawString(x, footer_y - 5*mm, sub)
 
     c.setFillColor(PRIMARY)
-
-    c.setFont(
-        "Helvetica-Bold",
-        28
-    )
-
-    c.drawString(
-        15 * mm,
-        H - 105 * mm,
-        "℞"
-    )
-
-    # =================================================
-    # CONTENT
-    # =================================================
-
-    y = H - 115 * mm
-
-    visit_type = str(
-        visit.get(
-            "visit_type",
-            ""
-        )
-    ).upper()
-
-    if visit_type == "ALLOPATHY":
-
-        y = _draw_allopathy_rx(
-            c,
-            visit,
-            y,
-            PRIMARY
-        )
-
-    else:
-
-        y = _draw_homeopathy_rx(
-            c,
-            visit,
-            y,
-            PRIMARY
-        )
-
-    # =================================================
-    # SIGNATURE
-    # =================================================
-
-    signature = _load_image(
-        clinic.get(
-            "signature_url"
-        )
-    )
-
-    if signature:
-
-        try:
-
-            c.drawImage(
-                signature,
-                W - 60 * mm,
-                30 * mm,
-                width=35 * mm,
-                height=20 * mm,
-                preserveAspectRatio=True,
-                mask="auto"
-            )
-
-        except Exception as e:
-
-            logger.warning(
-                f"Signature draw error: {e}"
-            )
-
-    # =================================================
-    # FOOTER
-    # =================================================
-
-    c.setFillColor(TEXT_GREY)
-
-    c.setFont(
-        "Helvetica",
-        8
-    )
-
-    c.drawCentredString(
-        W / 2,
-        15 * mm,
-        "Digitally generated prescription"
-    )
-
-    c.drawCentredString(
-        W / 2,
-        10 * mm,
-        "Powered by Vennova Clinic OS"
-    )
+    c.rect(0, 0, W, 4*mm, fill=1, stroke=0)
 
     c.save()
-
     pdf = buf.getvalue()
-
     buf.close()
-
     return pdf
