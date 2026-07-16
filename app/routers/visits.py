@@ -325,7 +325,7 @@ def get_patient_visits(
             "created_at": v.created_at.isoformat() if v.created_at else None,
             "closed_at": v.closed_at.isoformat() if v.closed_at else None,
             "chief_complaint": v.chief_complaint,
-            "visit_type": str(v.visit_type) if v.visit_type else None,
+            "visit_type": str(v.type.value) if v.type else None,
             "visit_status": str(v.visit_status) if v.visit_status else None,
             "payment_status": str(v.payment_status) if v.payment_status else None,
             "fee": float(v.fee) if v.fee else 0,
