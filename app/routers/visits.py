@@ -15,7 +15,8 @@ from app.schemas.visit import (
     VitalsInput,
     AllopathyInput,
     HomeopathyInput,
-    CloseVisitInput
+    CloseVisitInput,
+    MedicinesCreate,   # ADD THIS
 )
 from app.services import visit_service
 from app.services.audit_service import log_action
@@ -218,6 +219,37 @@ def save_homeopathy(
 
     return result
 
+@router.post("/{visit_id}/medicines")
+def save_medicines(
+    visit_id: str,
+    data: MedicinesCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(doctor_only)
+):
+    from app.models.medicine import Medicine
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == current_user.clinic_id
+    ).first()
+    if not visit:
+        raise HTTPException(404, "Visit not found")
+
+    db.query(Medicine).filter(Medicine.visit_id == visit_id).delete()
+
+    for m in data.medicines:
+        db.add(Medicine(
+            visit_id=visit_id,
+            name=m.name,
+            potency=m.potency,
+            timing=m.timing,
+            days=m.days,
+            food_relation=m.food_relation,
+            notes=m.notes,
+        ))
+    db.commit()
+
+    return {"message": "Medicines saved", "count": len(data.medicines)}
 
 # =====================================================
 # CLOSE VISIT — Step 3 (billing)

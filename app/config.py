@@ -67,7 +67,8 @@ class Settings(BaseSettings):
     # CORS
     # ─────────────────────────────────────────────
     ALLOWED_ORIGINS: str = "https://app.vennova.in"
-
+    
+    CRON_SECRET: str = ""
     # ─────────────────────────────────────────────
     # Logging + Rate Limits
     # ─────────────────────────────────────────────
