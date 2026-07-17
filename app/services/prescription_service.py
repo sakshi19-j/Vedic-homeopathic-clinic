@@ -175,6 +175,20 @@ async def generate_prescription(
                 "by your doctor."
             )
 
+# Pull BOX-style medicines saved via the Medicine table (homeopathy flow)
+    from app.models.medicine import Medicine
+    box_medicines = db.query(Medicine).filter(Medicine.visit_id == visit.id).all()
+    if box_medicines:
+        medicines_list = [
+            {
+                "name": m.name,
+                "dosage": m.potency or "",
+                "timing": m.timing or "",
+                "duration": m.days or "",
+                "food_relation": m.food_relation or "",
+            }
+            for m in box_medicines
+        ]
     # =================================================
     # HOMEOPATHY CASE
     # =================================================

@@ -251,6 +251,15 @@ def save_medicines(
 
     return {"message": "Medicines saved", "count": len(data.medicines)}
 
+@router.put("/{visit_id}/medicines")
+def save_medicines_put(
+    visit_id: str,
+    data: MedicinesCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(doctor_only)
+):
+    return save_medicines(visit_id, data, db, current_user)
+
 # =====================================================
 # CLOSE VISIT — Step 3 (billing)
 # =====================================================

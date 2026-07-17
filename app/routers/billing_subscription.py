@@ -271,30 +271,22 @@ def create_subscription(
     # CREATE SUBSCRIPTION
     # -------------------------------------------------
 
+    if data.plan_key.endswith("_yearly"):
+        total_count = 10
+    elif data.plan_key.endswith("_6month"):
+        total_count = 20
+    else:
+        total_count = 120
+
     subscription = client.subscription.create({
-
-        "plan_id":
-            plan_id,
-
-        "total_count":
-            120,
-
-        "quantity":
-            1,
-
-        "customer_notify":
-            1,
-
+        "plan_id": plan_id,
+        "total_count": total_count,
+        "quantity": 1,
+        "customer_notify": 1,
         "notes": {
-
-            "clinic_id":
-                str(current_user.clinic_id),
-
-            "clinic_name":
-                clinic.name,
-
-            "plan_key":
-                data.plan_key,
+            "clinic_id": str(current_user.clinic_id),
+            "clinic_name": clinic.name,
+            "plan_key": data.plan_key,
         }
     })
 

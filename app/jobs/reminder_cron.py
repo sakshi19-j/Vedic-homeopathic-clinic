@@ -10,6 +10,7 @@ from app.config import settings
 from app.services.growth_service import flag_missed_patients
 from app.services.reminder_service import send_due_reminders
 from app.models.visit import VisitStatus
+from app.services.reminder_service import send_due_reminders_async
 
 logger = logging.getLogger(__name__)
 IST = pytz.timezone("Asia/Kolkata")
@@ -83,7 +84,7 @@ async def _job_daily_reminders(db):
                 missed = flag_missed_patients(db, clinic.id)
                 logger.info(f"  {clinic.name}: {missed} flagged as missed")
 
-                result = await send_due_reminders(db, clinic.id)
+                result = await send_due_reminders_async(db, clinic.id)
                 from app.models.visit import Visit
 
                 recent_visits = db.query(Visit).filter(
