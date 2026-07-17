@@ -377,6 +377,15 @@ def checkin_appointment(
         **(result if isinstance(result, dict) else {})
     }
         
+    # Link the queue entry back to this appointment for status sync later
+    queue_entry = db.query(Queue).filter(
+        Queue.patient_id == appt.patient_id,
+        Queue.clinic_id == current_user.clinic_id,
+        Queue.status == "WAITING"
+    ).order_by(Queue.created_at.desc()).first()
+    if queue_entry:
+        queue_entry.appointment_id = appointment_id
+        db.commit()
 # =========================================================
 # Cancel Appointment
 # =========================================================

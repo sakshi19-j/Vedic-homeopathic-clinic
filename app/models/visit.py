@@ -87,7 +87,8 @@ class Visit(BaseModel):
         SQLEnum(VisitType),
         nullable=False
     )
-
+    appointment_id = Column(String, nullable=True)
+    
     visit_status = Column(
         SQLEnum(VisitStatus),
         default=VisitStatus.DRAFT,

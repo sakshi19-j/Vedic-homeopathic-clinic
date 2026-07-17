@@ -525,6 +525,15 @@ def close_visit(
         except:
             pass
 
+    # Sync original appointment status to COMPLETED
+    if queue_entry and getattr(queue_entry, "appointment_id", None):
+        from app.models.appointment import Appointment
+        appt = db.query(Appointment).filter(
+            Appointment.id == queue_entry.appointment_id
+        ).first()
+        if appt:
+            appt.status = "COMPLETED"
+            db.add(appt)
     # =====================================================
     # CREATE FOLLOWUPS FROM DOCTOR INPUT
     # =====================================================
@@ -580,6 +589,15 @@ def close_visit(
                 followup_date=followup_date,
                 followup_type=data.followup_type
             )
+# =====================================================
+# UPDATE PATIENT VISIT STATS
+# =====================================================
+    from app.models.patient import Patient
+    patient = db.query(Patient).filter(Patient.id == visit.patient_id).first()
+    if patient:
+        patient.total_visits = (patient.total_visits or 0) + 1
+        patient.last_visit_date = datetime.utcnow()
+        db.add(patient)
 
         # =====================================================
         # SAVE EVERYTHING
