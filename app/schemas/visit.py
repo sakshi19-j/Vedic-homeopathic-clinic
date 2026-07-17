@@ -75,13 +75,12 @@ class MedicinesCreate(BaseModel):
 
 
 class CloseVisitRequest(BaseModel):
-    fee: float
+    fee: Optional[float] = 0   # was: fee: float (required)
     payment_mode: Optional[str] = None
     disease_type: Optional[str] = "default"
     followup_channel: Optional[str] = "WHATSAPP"
     followup_date: Optional[str] = None
     followup_type: Optional[str] = None
-
 
 class VisitResponse(BaseModel):
     id: str

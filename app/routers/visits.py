@@ -109,6 +109,28 @@ def get_visit(
         clinic_id = current_user.clinic_id
     )
 
+@router.put("/{visit_id}")
+def update_visit(
+    visit_id: str,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == current_user.clinic_id
+    ).first()
+    if not visit:
+        raise HTTPException(404, "Visit not found")
+
+    allowed_fields = ["chief_complaint", "diagnosis", "notes", "advice", "examination", "observations"]
+    for field in allowed_fields:
+        if field in data and data[field] is not None and hasattr(visit, field):
+            setattr(visit, field, data[field])
+
+    db.commit()
+    db.refresh(visit)
+    return {"message": "Visit updated", "visit_id": visit.id}
 
 # =====================================================
 # WIZARD STATE — which step is the visit on?
@@ -449,45 +471,71 @@ def get_prescription_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(receptionist_or_doctor)
 ):
-    """
-    Generate and return branded PDF prescription.
-    """
     from fastapi.responses import Response
     from app.models.visit import Visit
     from app.models.patient import Patient
     from app.models.clinic import Clinic
+    from app.models.medicine import Medicine
 
     visit = db.query(Visit).filter(
-        Visit.id        == visit_id,
+        Visit.id == visit_id,
         Visit.clinic_id == current_user.clinic_id
     ).first()
-
     if not visit:
         raise HTTPException(404, "Visit not found")
 
     patient = db.query(Patient).filter(Patient.id == visit.patient_id).first()
     clinic  = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
 
+    box_medicines = db.query(Medicine).filter(Medicine.visit_id == visit.id).all()
+    medicines_list = [
+        {"name": m.name, "potency": m.potency, "timing": m.timing,
+         "days": m.days, "food_relation": m.food_relation}
+        for m in box_medicines
+    ]
+
+    advice = ""
+    if visit.homeopathy_case and visit.homeopathy_case.patient_rx:
+        advice = visit.homeopathy_case.patient_rx
+
+    visit_dict = {
+        "visit_type": visit.type.value if visit.type else "",
+        "medicines": medicines_list,
+        "advice": getattr(visit, "advice", None) or advice,
+        "backend_url": "https://natural-success-production.up.railway.app",
+        "token": visit.prescription_token or "",
+    }
+
     try:
         from app.services.pdf_service import generate_prescription_pdf
         pdf_bytes = generate_prescription_pdf(
-            visit   = visit.__dict__,
-            clinic  = clinic.__dict__ if clinic else {},
-            doctor  = current_user.__dict__,
-            patient = patient.__dict__ if patient else {}
+            visit=visit_dict,
+            clinic={
+                "name": clinic.name if clinic else "Clinic",
+                "logo_url": getattr(clinic, "logo_url", None),
+                "signature_url": getattr(clinic, "signature_url", None),
+                "phone": clinic.phone if clinic else "",
+                "email": getattr(clinic, "email", "") if clinic else "",
+                "address": clinic.address if clinic else "",
+            },
+            doctor={
+                "name": clinic.doctor_name if clinic else "Doctor",
+                "qualification": clinic.qualification if clinic else "",
+            },
+            patient={
+                "name": f"{patient.first_name} {patient.last_name or ''}".strip() if patient else "",
+                "age": patient.age if patient else "",
+                "gender": patient.gender.value if patient and patient.gender else "",
+            }
         )
         return Response(
-            content    = pdf_bytes,
-            media_type = "application/pdf",
-            headers    = {
-                "Content-Disposition":
-                    f"inline; filename=rx_{visit_id[:8]}.pdf"
-            }
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=rx_{visit_id[:8]}.pdf"}
         )
     except Exception as e:
         logger.error(f"PDF generation failed: {e}")
         raise HTTPException(500, f"PDF generation failed: {str(e)}")
-
 
 # =====================================================
 # SEND PRESCRIPTION VIA WHATSAPP
