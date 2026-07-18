@@ -248,36 +248,44 @@ def get_patient_history(
             }
 
         if v.homeopathy_case:
-            entry["remedy"]  = v.homeopathy_case.remedy
+            entry["patient_rx"] = v.homeopathy_case.patient_rx
+            entry["remedy"] = v.homeopathy_case.remedy
             entry["potency"] = v.homeopathy_case.potency
+            entry["repetition"] = v.homeopathy_case.repetition
+            entry["miasm"] = v.homeopathy_case.miasm
 
-        if v.allopathy_rx:
-            import json
-            try:
-                meds = json.loads(v.allopathy_rx.medicines or "[]")
-            except Exception:
-                meds = []
-            entry["medicines"] = meds
+        entry["medicines"] = []
+
+        if getattr(v, "medicines", None):
+            for m in v.medicines:
+                entry["medicines"].append({
+                    "name": m.name,
+                    "potency": m.potency,
+                    "timing": m.timing,
+                    "duration": m.days,
+                    "instruction": m.notes,
+                    "food_relation": m.food_relation
+                })
 
         history.append(entry)
-
     return {
-        "patient": {
-            "id":           patient.id,
-            "reg_no":       patient.reg_no,
-            "name":         f"{patient.first_name} {patient.last_name or ''}".strip(),
-            "phone":        patient.phone_mobile,
-            "age":          patient.age,
-            "gender":       patient.gender.value if patient.gender else None,
-            "total_visits": patient.total_visits,
-            "last_visit":   patient.last_visit_date.strftime("%d-%m-%Y")
-                            if patient.last_visit_date else None
-        },
-        "visits":       history,
-        "total_visits": len(history)
-    }
-
-
+    "patient": {
+        "id": patient.id,
+        "reg_no": patient.reg_no,
+        "name": f"{patient.first_name} {patient.last_name or ''}".strip(),
+        "phone": patient.phone_mobile,
+        "age": patient.age,
+        "gender": patient.gender.value if patient.gender else None,
+        "total_visits": patient.total_visits,
+        "last_visit": (
+            patient.last_visit_date.strftime("%d-%m-%Y")
+            if patient.last_visit_date
+            else None
+        )
+    },
+    "visits": history,
+    "total_visits": len(history)
+}
 # =====================================================
 # SOFT DELETE
 # =====================================================

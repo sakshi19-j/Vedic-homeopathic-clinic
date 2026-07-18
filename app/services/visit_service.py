@@ -38,6 +38,8 @@ def create_visit(
 
         doctor_id=doctor_id,
 
+        appointment_id=getattr(data,"appointment_id",None),
+
         type=data.type,
 
         visit_status=VisitStatus.ACTIVE,
@@ -571,6 +573,7 @@ def close_visit(
 
             visit.followup_date = followup_date
             visit.followup_status = "PENDING"
+            visit.followup_reminder_sent = False
 
             db.query(FollowUp).filter(
                 FollowUp.visit_id == visit.id,

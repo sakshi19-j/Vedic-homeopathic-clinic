@@ -272,6 +272,12 @@ async def generate_prescription(
 
         "rubrics":
             rubrics,
+        
+        "patient_rx": hc.patient_rx if visit.homeopathy_case else "",
+        "remedy": hc.remedy if visit.homeopathy_case else "",
+        "potency": hc.potency if visit.homeopathy_case else "",
+        "repetition": hc.repetition if visit.homeopathy_case else "",
+        "miasm": hc.miasm if visit.homeopathy_case else "",
     }
 
     # =================================================

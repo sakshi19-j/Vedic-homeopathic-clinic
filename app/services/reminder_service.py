@@ -330,7 +330,12 @@ async def send_due_reminders_async(
                     )
 
                     failed += 1
+                visit = followup.visit
 
+                if visit:
+                    visit.followup_reminder_sent = True
+                    db.add(visit)
+                    
                 db.commit()
 
         except Exception as e:

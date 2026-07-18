@@ -591,7 +591,7 @@ def generate_prescription_pdf(
     c.setFont("Helvetica-Bold", 11)
     c.drawString(15*mm, H - 44*mm, "Doctor")
     c.setFont("Helvetica", 10)
-    c.drawString(15*mm, H - 50*mm, doctor.get("qualification", ""))
+    c.drawString(15*mm, H - 51*mm, doctor.get("qualification", ""))
 
     # ---------- Contact block (right) ----------
     c.setFont("Helvetica", 9)
