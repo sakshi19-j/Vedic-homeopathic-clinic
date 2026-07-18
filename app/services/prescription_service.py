@@ -285,30 +285,26 @@ async def generate_prescription(
     # =================================================
 
     clinic_dict = {
+        "name": clinic.name,
+        "logo_url": clinic.logo_url,
 
-        "name":
-            clinic.name,
+        "doctor_name": clinic.doctor_name,
+        "qualification": clinic.qualification,
 
-        "doctor_name":
-            clinic.doctor_name,
+        "phone": clinic.phone,
+        "email": clinic.email,
+        "website": clinic.website,
+        "address": clinic.address,
+        "timings": clinic.timings,
 
-        "qualification":
-            clinic.qualification or "",
+        "footer_text": clinic.footer_text,
 
-        "address":
-            clinic.address or "",
+        "signature_url": clinic.signature_url,
 
-        "phone":
-            clinic.phone or "",
+        "primary_color": clinic.primary_color,
+        "secondary_color": clinic.secondary_color,
 
-        "timings":
-            clinic.timings or "",
-
-        "logo_url":
-            getattr(clinic, "logo_url", None),
-
-        "signature_url":
-            getattr(clinic, "signature_url", None),
+        "prescription_theme": clinic.prescription_theme
     }
 
     # =================================================
