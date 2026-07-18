@@ -433,7 +433,7 @@ def generate_receipt_pdf(receipt):
     c.drawString(
         25 * mm,
         y,
-        f"Amount Paid: ₹{amount}"
+        f"Amount Paid: Rs. {amount}"
     )
 
     y -= 10 * mm

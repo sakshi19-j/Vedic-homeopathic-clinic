@@ -273,11 +273,11 @@ async def generate_prescription(
         "rubrics":
             rubrics,
         
-        "patient_rx": hc.patient_rx if visit.homeopathy_case else "",
-        "remedy": hc.remedy if visit.homeopathy_case else "",
-        "potency": hc.potency if visit.homeopathy_case else "",
-        "repetition": hc.repetition if visit.homeopathy_case else "",
-        "miasm": hc.miasm if visit.homeopathy_case else "",
+        "patient_rx": (hc.patient_rx or "") if visit.homeopathy_case else "",
+        "remedy": (hc.remedy or "") if visit.homeopathy_case else "",
+        "potency": (hc.potency or "") if visit.homeopathy_case else "",
+        "repetition": (hc.repetition or "") if visit.homeopathy_case else "",
+        "miasm": (hc.miasm or "") if visit.homeopathy_case else "",
     }
 
     # =================================================
@@ -285,28 +285,21 @@ async def generate_prescription(
     # =================================================
 
     clinic_dict = {
-        "name": clinic.name,
+        "name": clinic.name or "Clinic",
         "logo_url": clinic.logo_url,
-
-        "doctor_name": clinic.doctor_name,
-        "qualification": clinic.qualification,
-
-        "phone": clinic.phone,
-        "email": clinic.email,
-        "website": clinic.website,
-        "address": clinic.address,
-        "timings": clinic.timings,
-
-        "footer_text": clinic.footer_text,
-
+        "doctor_name": clinic.doctor_name or "Doctor",
+        "qualification": clinic.qualification or "",
+        "phone": clinic.phone or "",
+        "email": clinic.email or "",
+        "website": clinic.website or "",
+        "address": clinic.address or "",
+        "timings": clinic.timings or "",
+        "footer_text": clinic.footer_text or "",
         "signature_url": clinic.signature_url,
-
-        "primary_color": clinic.primary_color,
-        "secondary_color": clinic.secondary_color,
-
-        "prescription_theme": clinic.prescription_theme
+        "primary_color": clinic.primary_color or "#5B21B6",
+        "secondary_color": clinic.secondary_color or "#EDE9FE",
+        "prescription_theme": clinic.prescription_theme or "CLASSIC_BLUE",
     }
-
     # =================================================
     # PATIENT DICT
     # =================================================
