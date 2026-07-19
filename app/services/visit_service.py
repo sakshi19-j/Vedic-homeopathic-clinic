@@ -842,7 +842,19 @@ def save_homeopathy_case(
     # =================================================
 
     homeopathy_case.patient_rx = data.patient_rx
+    # =================================================
+    # KEEP VISIT SUMMARY IN SYNC
+    # =================================================
 
+    visit.chief_complaint = data.chief_complaint
+
+    if hasattr(data, "diagnosis"):
+        visit.diagnosis = data.diagnosis
+
+    if hasattr(data, "notes"):
+        visit.notes = data.notes
+
+    db.add(visit)
     db.commit()
 
     db.refresh(homeopathy_case)

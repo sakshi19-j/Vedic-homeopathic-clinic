@@ -381,6 +381,11 @@ def get_patient_visits(
         followup = db.query(FollowUp).filter(
             FollowUp.visit_id == str(v.id)
         ).order_by(FollowUp.created_at.desc()).first()
+        from app.models.visit import HomeopathyCase
+
+        homeopathy_case = db.query(HomeopathyCase).filter(
+            HomeopathyCase.visit_id == str(v.id)
+        ).first()
 
         result.append({
             "id": str(v.id),
@@ -392,12 +397,6 @@ def get_patient_visits(
             "visit_status": str(v.visit_status) if v.visit_status else None,
             "payment_status": str(v.payment_status) if v.payment_status else None,
             "fee": float(v.fee) if v.fee else 0,
-            "diagnosis": getattr(v, "diagnosis", None),
-            "advice": getattr(v, "advice", None),
-            "notes": getattr(v, "notes", None),
-            "remedy": getattr(v, "remedy", None),
-            "potency": getattr(v, "potency", None),
-            "patient_rx": getattr(v, "patient_rx", None),
             "medicines": medicine_list,
             "followup_date": (
                 followup.due_date.isoformat()
@@ -406,6 +405,93 @@ def get_patient_visits(
             "followup_type": (
                 str(followup.type)
                 if followup and followup.type else None
+            ),
+            "diagnosis": v.diagnosis,
+            "notes": v.notes,
+
+            "patient_rx": (
+                homeopathy_case.patient_rx
+                if homeopathy_case else None
+            ),
+
+            "remedy": (
+                homeopathy_case.remedy
+                if homeopathy_case else None
+            ),
+
+            "potency": (
+                homeopathy_case.potency
+                if homeopathy_case else None
+            ),
+
+            "repetition": (
+                homeopathy_case.repetition
+                if homeopathy_case else None
+            ),
+
+            "miasm": (
+                homeopathy_case.miasm
+                if homeopathy_case else None
+            ),
+
+            "history_present": (
+                homeopathy_case.history_present
+                if homeopathy_case else None
+            ),
+
+            "history_past": (
+                homeopathy_case.history_past
+                if homeopathy_case else None
+            ),
+
+            "history_family": (
+                homeopathy_case.history_family
+                if homeopathy_case else None
+            ),
+
+            "history_surgical": (
+                homeopathy_case.history_surgical
+                if homeopathy_case else None
+            ),
+
+            "thermal_sensation": (
+                homeopathy_case.thermal_sensation
+                if homeopathy_case else None
+            ),
+
+            "appetite": (
+                homeopathy_case.appetite
+                if homeopathy_case else None
+            ),
+
+            "thirst": (
+                homeopathy_case.thirst
+                if homeopathy_case else None
+            ),
+
+            "sleep": (
+                homeopathy_case.sleep
+                if homeopathy_case else None
+            ),
+
+            "dreams": (
+                homeopathy_case.dreams
+                if homeopathy_case else None
+            ),
+
+            "mind_symptoms": (
+                homeopathy_case.mind_symptoms
+                if homeopathy_case else None
+            ),
+
+            "particulars": (
+                homeopathy_case.particulars
+                if homeopathy_case else None
+            ),
+
+            "rubrics": (
+                homeopathy_case.rubrics
+                if homeopathy_case else None
             ),
         })
 
