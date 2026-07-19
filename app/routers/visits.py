@@ -460,7 +460,48 @@ def todays_visits(
         ]
     }
 
+from pydantic import BaseModel as PydanticBaseModel
 
+class FollowupUpdateRequest(PydanticBaseModel):
+    followup_date: Optional[str] = None
+    followup_type: Optional[str] = None
+
+@router.post("/{visit_id}/followup")
+def update_followup_only(
+    visit_id: str,
+    data: FollowupUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(receptionist_or_doctor)
+):
+    from datetime import datetime as dt
+
+    visit = db.query(Visit).filter(
+        Visit.id == visit_id,
+        Visit.clinic_id == current_user.clinic_id
+    ).first()
+    if not visit:
+        raise HTTPException(404, "Visit not found")
+
+    if data.followup_date:
+        try:
+            visit.followup_date = dt.fromisoformat(data.followup_date)
+        except ValueError:
+            pass
+    visit.followup_status = "PENDING"
+    db.commit()
+
+    if data.followup_date and data.followup_type:
+        from app.services.reminder_service import schedule_followups_after_visit
+        schedule_followups_after_visit(
+            db=db,
+            visit_id=visit.id,
+            patient_id=visit.patient_id,
+            clinic_id=visit.clinic_id,
+            followup_date=visit.followup_date,
+            followup_type=data.followup_type
+        )
+
+    return {"message": "Follow-up updated", "visit_id": visit.id}
 # =====================================================
 # PDF PRESCRIPTION
 # =====================================================
