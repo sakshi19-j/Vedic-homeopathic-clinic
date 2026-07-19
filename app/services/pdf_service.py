@@ -587,11 +587,23 @@ def generate_prescription_pdf(
     c.setLineWidth(2)
     c.line(15*mm, H - 34*mm, 65*mm, H - 34*mm)
 
+    # ---------- Logo (top-right of header) ----------
+    logo = _load_image(clinic.get("logo_url"))
+    if logo:
+        try:
+            c.drawImage(
+                logo, W - 45*mm, H - 40*mm,
+                width=25*mm, height=25*mm,
+                preserveAspectRatio=True, mask="auto"
+            )
+        except Exception as e:
+            logger.warning(f"Logo draw error: {e}")
+
     c.setFillColor(TEXT)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(15*mm, H - 44*mm, "Doctor")
+    c.drawString(15*mm, H - 44*mm, f"Dr. {doctor.get('name', 'Doctor')}")
     c.setFont("Helvetica", 10)
-    c.drawString(15*mm, H - 51*mm, doctor.get("qualification", ""))
+    c.drawString(15*mm, H - 50*mm, doctor.get("qualification", ""))
 
     # ---------- Contact block (right) ----------
     c.setFont("Helvetica", 9)

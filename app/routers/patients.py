@@ -135,6 +135,11 @@ def create_patient(
             if patient.last_visit_date
             else None
         ),
+        "last_visit": (
+            patient.last_visit_date.strftime("%d-%m-%Y")
+            if patient.last_visit_date
+            else None
+        ),
     }
 
 

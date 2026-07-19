@@ -161,19 +161,14 @@ async def generate_prescription(
     # =================================================
 
     elif visit.homeopathy_case:
-
         hc = visit.homeopathy_case
-
-        if hc.patient_rx:
-
-            rx_notes += hc.patient_rx
-
+        patient_rx_raw = hc.patient_rx or ""
+        if "\n\nAdvice: " in patient_rx_raw:
+            rx_part, advice_part = patient_rx_raw.split("\n\nAdvice: ", 1)
         else:
-
-            rx_notes += (
-                "Take medicines as prescribed "
-                "by your doctor."
-            )
+            rx_part, advice_part = patient_rx_raw, ""
+        rx_notes += rx_part or "Take medicines as prescribed by your doctor."
+        advice = advice_part
 
 # Pull BOX-style medicines saved via the Medicine table (homeopathy flow)
     from app.models.medicine import Medicine
