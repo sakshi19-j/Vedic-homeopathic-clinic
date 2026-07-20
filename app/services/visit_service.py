@@ -453,11 +453,11 @@ def close_visit(
     # PREVENT DUPLICATE CLOSE
     # =====================================================
 
-    if visit.visit_status == VisitStatus.COMPLETED:
+    if visit.visit_status in (VisitStatus.BILLING, VisitStatus.COMPLETED):
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Visit already completed"
+            detail="Visit already closed"
         )
 
     # =====================================================

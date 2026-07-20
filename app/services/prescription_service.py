@@ -420,7 +420,7 @@ async def generate_prescription(
                 patient_name=patient.first_name or "Patient",
                 clinic_name=clinic.name or "Your Clinic",
                 prescription_url=secure_url,
-                support_phone=clinic.phone or "N/A"
+                support_phone=clinic.phone or "Reception"
             )
             
             logger.info(
