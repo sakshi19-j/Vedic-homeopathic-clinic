@@ -151,6 +151,8 @@ def get_visit(
     visit_id: str,
     clinic_id: str
 ):
+    from app.models.medicine import Medicine
+    from app.models.reminder import FollowUp
 
     visit = _get_visit(
         db=db,
@@ -158,65 +160,92 @@ def get_visit(
         clinic_id=clinic_id
     )
 
+    homeopathy_case = db.query(HomeopathyCase).filter(
+        HomeopathyCase.visit_id == visit.id
+    ).first()
+
+    vitals = db.query(Vitals).filter(
+        Vitals.visit_id == visit.id
+    ).first()
+
+    medicines = db.query(Medicine).filter(
+        Medicine.visit_id == visit.id
+    ).all()
+
+    followup = db.query(FollowUp).filter(
+        FollowUp.visit_id == visit.id
+    ).order_by(FollowUp.created_at.desc()).first()
+
     return {
 
         "id": visit.id,
-
         "patient_id": visit.patient_id,
-
         "clinic_id": visit.clinic_id,
-
-        "type": (
-            visit.type.value
-            if visit.type else None
-        ),
-
-        "status": (
-            visit.visit_status.value
-            if visit.visit_status else None
-        ),
-
-        "chief_complaint": (
-            visit.chief_complaint
-        ),
-
-        "disease_type": (
-            visit.disease_type
-        ),
-
-        "fee": float(
-            visit.fee or 0
-        ),
-
+        "type": visit.type.value if visit.type else None,
+        "status": visit.visit_status.value if visit.visit_status else None,
+        "chief_complaint": visit.chief_complaint,
+        "diagnosis": visit.diagnosis,
+        "disease_type": visit.disease_type,
+        "fee": float(visit.fee or 0),
         "notes": visit.notes,
+        "episode_id": visit.episode_id,
+        "payment_status": visit.payment_status.value if visit.payment_status else None,
+        "payment_mode": visit.payment_mode if visit.payment_mode else None,
+        "visit_date": visit.visit_date,
+        "created_at": visit.created_at,
+        "closed_at": visit.closed_at,
 
-        "episode_id": (
-            visit.episode_id
+        "followup_date": visit.followup_date,
+        "followup_type": followup.type if followup else None,
+
+        "medicines": [
+            {
+                "name": m.name,
+                "potency": m.potency,
+                "timing": m.timing,
+                "days": m.days,
+                "food_relation": m.food_relation,
+                "notes": m.notes,
+            }
+            for m in medicines
+        ],
+
+        "homeopathy_case": (
+            {
+                "chief_complaint": homeopathy_case.chief_complaint,
+                "history_present": homeopathy_case.history_present,
+                "history_past": homeopathy_case.history_past,
+                "history_surgical": homeopathy_case.history_surgical,
+                "history_family": homeopathy_case.history_family,
+                "thermal_sensation": homeopathy_case.thermal_sensation,
+                "appetite": homeopathy_case.appetite,
+                "thirst": homeopathy_case.thirst,
+                "sleep": homeopathy_case.sleep,
+                "dreams": homeopathy_case.dreams,
+                "menstrual": homeopathy_case.menstrual,
+                "mind_symptoms": homeopathy_case.mind_symptoms,
+                "particulars": homeopathy_case.particulars,
+                "rubrics": homeopathy_case.rubrics,
+                "remedy": homeopathy_case.remedy,
+                "potency": homeopathy_case.potency,
+                "repetition": homeopathy_case.repetition,
+                "miasm": homeopathy_case.miasm,
+                "patient_rx": homeopathy_case.patient_rx,
+            }
+            if homeopathy_case else None
         ),
 
-        "payment_status": (
-            visit.payment_status.value
-            if visit.payment_status
-            else None
+        "vitals": (
+            {
+                "weight_kg": float(vitals.weight_kg) if vitals.weight_kg else None,
+                "height_cm": float(vitals.height_cm) if vitals.height_cm else None,
+                "bp_systolic": vitals.bp_systolic,
+                "bp_diastolic": vitals.bp_diastolic,
+                "temperature": float(vitals.temperature) if vitals.temperature else None,
+                "pulse_rate": vitals.pulse_rate,
+            }
+            if vitals else None
         ),
-
-        "payment_mode": (
-            visit.payment_mode
-            if visit.payment_mode
-            else None
-        ),
-
-        "visit_date": (
-            visit.visit_date
-        ),
-
-        "created_at": (
-            visit.created_at
-        ),
-
-        "closed_at": (
-            visit.closed_at
-        )
     }
 
 def save_vitals(

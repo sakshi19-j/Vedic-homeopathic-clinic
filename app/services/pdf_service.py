@@ -612,7 +612,7 @@ def generate_prescription_pdf(
     c.drawString(120*mm, H - 36*mm, clinic.get("address", ""))
 
     # ---------- Patient info bar ----------
-    y_bar = H - 68*mm
+    y_bar = H - 80*mm
     c.setFillColor(LIGHT)
     c.roundRect(15*mm, y_bar, W - 30*mm, 20*mm, 3*mm, fill=1, stroke=0)
     c.setFillColor(PRIMARY)
@@ -637,6 +637,7 @@ def generate_prescription_pdf(
 
     # ---------- Table ----------
     medicines = visit.get("medicines", [])
+    is_homeopathy = visit.get("visit_type") == "HOMEOPATHY"
     col_x = [15*mm, 30*mm, 100*mm, 145*mm, W - 15*mm]
     row_y = y_tab - 2*mm
     c.setFillColor(LIGHT)
@@ -655,7 +656,8 @@ def generate_prescription_pdf(
         c.setFillColor(TEXT)
         c.setFont("Helvetica-Bold", 10)
         c.drawString(col_x[0] + 2*mm, row_y - 6*mm, str(idx))
-        c.drawString(col_x[1] + 2*mm, row_y - 5*mm, f"{med.get('name','')} {med.get('dosage','')}".strip())
+        instruction_label = f"Box {idx}" if is_homeopathy else f"{med.get('name','')} {med.get('dosage','')}".strip()
+        c.drawString(col_x[1] + 2*mm, row_y - 5*mm, instruction_label)
         c.setFont("Helvetica", 9)
         c.drawString(col_x[1] + 2*mm, row_y - 10*mm, med.get("food_relation", ""))
         c.drawString(col_x[2] + 2*mm, row_y - 6*mm, med.get("timing", ""))

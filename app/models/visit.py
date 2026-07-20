@@ -116,6 +116,21 @@ class Visit(BaseModel):
         nullable=True
     )
 
+    examination = Column(
+        String,
+        nullable=True
+    )
+
+    observations = Column(
+        String,
+        nullable=True
+    )
+
+    advice = Column(
+        String,
+        nullable=True
+    )
+
     fee = Column(
         Numeric(10, 2),
         default=0
