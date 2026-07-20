@@ -465,12 +465,22 @@ def close_visit(
     # PREVENT DUPLICATE CLOSE
     # =====================================================
 
-    if visit.visit_status in (VisitStatus.BILLING, VisitStatus.COMPLETED):
+    # If already moved to billing, simply return success.
+    # Prevent duplicate payment creation while making the API idempotent.
 
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Visit already closed"
-        )
+    if visit.visit_status == VisitStatus.BILLING:
+        return {
+            "message": "Visit already in billing",
+            "visit_id": visit.id,
+            "status": visit.visit_status.value,
+        }
+
+    if visit.visit_status == VisitStatus.COMPLETED:
+        return {
+            "message": "Visit already completed",
+            "visit_id": visit.id,
+            "status": visit.visit_status.value,
+        }
 
     # =====================================================
     # UPDATE VISIT
