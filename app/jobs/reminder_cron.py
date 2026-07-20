@@ -370,16 +370,6 @@ def start_scheduler():
             timezone=IST
         )
 
-        # 9:30 AM — followup reminders + flag missed
-        _scheduler.add_job(
-            func=run_daily_reminders,
-            trigger="cron", hour=9, minute=30,
-            id="daily_reminders",
-            name="Daily Followup Reminders",
-            replace_existing=True,
-            misfire_grace_time=3600
-        )
-
         # 9:00 AM — birthday greetings
         _scheduler.add_job(
             func=run_birthday_messages,

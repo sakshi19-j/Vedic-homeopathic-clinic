@@ -18,7 +18,7 @@ import pytz
 logger = logging.getLogger(__name__)
 IST = pytz.timezone("Asia/Kolkata")
 
-OVERDUE_CUTOFF_DAYS = 1
+OVERDUE_CUTOFF_DAYS = 0
 
 
 # =====================================================
@@ -335,7 +335,7 @@ async def send_due_reminders_async(
                 if visit:
                     visit.followup_reminder_sent = True
                     db.add(visit)
-                    
+
                 db.commit()
 
         except Exception as e:
