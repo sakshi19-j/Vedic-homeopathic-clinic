@@ -16,6 +16,15 @@ from app.schemas.visit import CloseVisitRequest
 
 from app.models.queue import Queue
 from datetime import datetime, timedelta
+import json as _json
+
+def _safe_json(value, default=None):
+    if not value:
+        return default
+    try:
+        return _json.loads(value)
+    except Exception:
+        return default if default is not None else value
 # =====================================================
 # PRIVATE HELPERS
 # =====================================================
@@ -195,7 +204,10 @@ def get_visit(
         "created_at": visit.created_at,
         "closed_at": visit.closed_at,
 
-        "followup_date": visit.followup_date,
+        "followup_date": (
+            visit.followup_date.strftime("%Y-%m-%d")
+            if visit.followup_date else None
+        ),
         "followup_type": followup.type if followup else None,
 
         "medicines": [
@@ -224,8 +236,8 @@ def get_visit(
                 "dreams": homeopathy_case.dreams,
                 "menstrual": homeopathy_case.menstrual,
                 "mind_symptoms": homeopathy_case.mind_symptoms,
-                "particulars": homeopathy_case.particulars,
-                "rubrics": homeopathy_case.rubrics,
+                "particulars": _safe_json(homeopathy_case.particulars, default={}),
+                "rubrics": _safe_json(homeopathy_case.rubrics, default=[]),
                 "remedy": homeopathy_case.remedy,
                 "potency": homeopathy_case.potency,
                 "repetition": homeopathy_case.repetition,
