@@ -241,6 +241,15 @@ def save_homeopathy(
 
     return result
 
+@router.put("/{visit_id}/homeopathy")
+def save_homeopathy_put(
+    visit_id: str,
+    data: HomeopathyInput,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(doctor_only)
+):
+    return save_homeopathy(visit_id, data, db, current_user)
+
 @router.post("/{visit_id}/medicines")
 def save_medicines(
     visit_id: str,

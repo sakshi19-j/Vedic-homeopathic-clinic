@@ -819,26 +819,38 @@ def save_homeopathy_case(
         db.add(homeopathy_case)
 
     # =================================================
-    # BASIC CASE
+    # BASIC CASE — only overwrite fields that were sent
     # =================================================
 
-    homeopathy_case.chief_complaint = data.chief_complaint
-    homeopathy_case.history_present = data.history_present
-    homeopathy_case.history_past = data.history_past
-    homeopathy_case.history_surgical = data.history_surgical
-    homeopathy_case.history_family = data.history_family
+    if data.chief_complaint is not None:
+        homeopathy_case.chief_complaint = data.chief_complaint
+    if data.history_present is not None:
+        homeopathy_case.history_present = data.history_present
+    if data.history_past is not None:
+        homeopathy_case.history_past = data.history_past
+    if data.history_surgical is not None:
+        homeopathy_case.history_surgical = data.history_surgical
+    if data.history_family is not None:
+        homeopathy_case.history_family = data.history_family
 
     # =================================================
     # GENERALS
     # =================================================
 
-    homeopathy_case.thermal_sensation = data.thermal_sensation
-    homeopathy_case.appetite = data.appetite
-    homeopathy_case.thirst = data.thirst
-    homeopathy_case.sleep = data.sleep
-    homeopathy_case.dreams = data.dreams
-    homeopathy_case.menstrual = data.menstrual
-    homeopathy_case.mind_symptoms = data.mind_symptoms
+    if data.thermal_sensation is not None:
+        homeopathy_case.thermal_sensation = data.thermal_sensation
+    if data.appetite is not None:
+        homeopathy_case.appetite = data.appetite
+    if data.thirst is not None:
+        homeopathy_case.thirst = data.thirst
+    if data.sleep is not None:
+        homeopathy_case.sleep = data.sleep
+    if data.dreams is not None:
+        homeopathy_case.dreams = data.dreams
+    if data.menstrual is not None:
+        homeopathy_case.menstrual = data.menstrual
+    if data.mind_symptoms is not None:
+        homeopathy_case.mind_symptoms = data.mind_symptoms
 
     # =================================================
     # PARTICULARS
@@ -873,26 +885,33 @@ def save_homeopathy_case(
     # INTERNAL DOCTOR DATA
     # =================================================
 
-    homeopathy_case.remedy = data.remedy
-    homeopathy_case.potency = data.potency
-    homeopathy_case.repetition = data.repetition
-    homeopathy_case.miasm = data.miasm
+    if data.remedy is not None:
+        homeopathy_case.remedy = data.remedy
+    if data.potency is not None:
+        homeopathy_case.potency = data.potency
+    if data.repetition is not None:
+        homeopathy_case.repetition = data.repetition
+    if data.miasm is not None:
+        homeopathy_case.miasm = data.miasm
 
     # =================================================
     # SAFE PATIENT PRESCRIPTION
     # =================================================
 
-    homeopathy_case.patient_rx = data.patient_rx
+    if data.patient_rx is not None:
+        homeopathy_case.patient_rx = data.patient_rx
+
     # =================================================
     # KEEP VISIT SUMMARY IN SYNC
     # =================================================
 
-    visit.chief_complaint = data.chief_complaint
+    if data.chief_complaint is not None:
+        visit.chief_complaint = data.chief_complaint
 
-    if hasattr(data, "diagnosis"):
+    if hasattr(data, "diagnosis") and data.diagnosis is not None:
         visit.diagnosis = data.diagnosis
 
-    if hasattr(data, "notes"):
+    if hasattr(data, "notes") and data.notes is not None:
         visit.notes = data.notes
 
     db.add(visit)
