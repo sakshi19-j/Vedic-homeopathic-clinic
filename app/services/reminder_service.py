@@ -73,8 +73,7 @@ def schedule_followups_after_visit(
     ]
     reminder_dates = [
         (followup_date - timedelta(days=3), followup_type),
-        (followup_date - timedelta(days=1), followup_type),   # NEW — 24hr reminder
-        (followup_date,                     followup_type),
+        (followup_date - timedelta(days=1), followup_type),   # 24hr reminder
     ]
 
     for due_date, reminder_type in reminder_dates:
