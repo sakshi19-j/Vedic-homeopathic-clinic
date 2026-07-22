@@ -107,12 +107,14 @@ allowed_origins = [
 
     "https://clinicverse-core.lovable.app",
     "https://preview--clinicverse-core.lovable.app",
+
+    "https://vennova-care-clinic.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.lovable\.app",
+    allow_origin_regex=r"https://(.*\.lovable\.app|.*\.vercel\.app)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
