@@ -1,4 +1,6 @@
 import logging
+import time
+import threading
 from datetime import datetime, timedelta
 
 import pytz
@@ -55,31 +57,70 @@ class CurrentUser:
 
 
 # =====================================================
+# JWKS CACHE
+# -----------------------------------------------------
+# FIX: decode_supabase_token used to call httpx.get() on
+# Supabase's JWKS endpoint on EVERY single request. Since
+# this runs inside get_current_user (a dependency on almost
+# every route), and the DB session dependency is resolved
+# alongside it, every request held a DB connection idle
+# for up to `timeout` seconds while waiting on this network
+# call. Under any real concurrency this exhausted the
+# SQLAlchemy pool (see database.py: pool_size=5,
+# max_overflow=5) and caused QueuePool timeout errors on
+# every other request, including auth itself -- effectively
+# taking the whole backend down.
+#
+# JWKS keys barely ever rotate, so we cache them in-process
+# and only refetch once per hour (or immediately if nothing
+# has been fetched yet). A lock guards against multiple
+# threads refetching simultaneously the first time.
+# =====================================================
+
+_jwks_cache: dict | None = None
+_jwks_fetched_at: float = 0
+_jwks_lock = threading.Lock()
+_JWKS_TTL_SECONDS = 3600  # refresh at most once per hour
+
+
+def get_jwks() -> dict:
+    global _jwks_cache, _jwks_fetched_at
+
+    now = time.time()
+    if _jwks_cache is not None and (now - _jwks_fetched_at) < _JWKS_TTL_SECONDS:
+        return _jwks_cache
+
+    with _jwks_lock:
+        # Re-check inside the lock in case another thread already refreshed
+        # it while we were waiting.
+        now = time.time()
+        if _jwks_cache is not None and (now - _jwks_fetched_at) < _JWKS_TTL_SECONDS:
+            return _jwks_cache
+
+        jwks_url = (
+            f"{settings.SUPABASE_URL}"
+            f"/auth/v1/.well-known/jwks.json"
+        )
+
+        response = httpx.get(jwks_url, timeout=10)
+        response.raise_for_status()
+
+        _jwks_cache = response.json()
+        _jwks_fetched_at = now
+
+        logger.info("Refreshed Supabase JWKS cache")
+
+        return _jwks_cache
+
+
+# =====================================================
 # DECODE SUPABASE JWT
 # FINAL FIXED VERSION
 # =====================================================
 
 def decode_supabase_token(token: str) -> dict | None:
     try:
-        # Supabase JWKS endpoint
-        jwks_url = (
-            f"{settings.SUPABASE_URL}"
-            f"/auth/v1/.well-known/jwks.json"
-        )
-
-        # Fetch JWKS
-        response = httpx.get(
-            jwks_url,
-            timeout=10
-        )
-
-        response.raise_for_status()
-
-        jwks = response.json()
-
-        logger.info(
-            "Successfully fetched Supabase JWKS"
-        )
+        jwks = get_jwks()
 
         # Decode token
         payload = jwt.decode(
