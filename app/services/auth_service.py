@@ -72,7 +72,7 @@ def signup_clinic(
 
     trial_end = (
         datetime.now(IST)
-        + timedelta(days=30)
+        + timedelta(days=14)
     )
 
     clinic = Clinic(
