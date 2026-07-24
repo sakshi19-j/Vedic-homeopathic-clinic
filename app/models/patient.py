@@ -15,6 +15,7 @@ class MaritalStatus(str, enum.Enum):
     MARRIED = "MARRIED"
     WIDOWED = "WIDOWED"
     DIVORCED = "DIVORCED"
+    OTHER = "OTHER"
 
 
 class PatientType(str, enum.Enum):
