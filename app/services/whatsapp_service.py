@@ -567,3 +567,40 @@ async def send_billing_receipt(
         "status": "sent" if response.status_code in [200, 201] else "failed",
         "response": data
     }
+# =====================================================
+# ANNIVERSARY MESSAGE
+# =====================================================
+
+async def send_anniversary_message(
+    phone: str,
+    patient_name: str,
+    clinic_name: str,
+    language: str = "en"
+):
+    formatted_phone = normalize_phone(phone)
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": formatted_phone,
+        "type": "template",
+        "template": {
+            "name": "anniversary_message",
+            "language": {"code": language},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": patient_name}
+                    ]
+                }
+            ]
+        }
+    }
+    try:
+        response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+    return response.json()

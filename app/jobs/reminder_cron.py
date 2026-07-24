@@ -410,10 +410,65 @@ def start_scheduler():
             misfire_grace_time=3600
         )
 
+        _scheduler.add_job(
+            func=run_anniversary_messages,
+            trigger="cron", hour=9, minute=15,
+            id="anniversary_messages",
+            name="Anniversary Greetings",
+            replace_existing=True,
+            misfire_grace_time=3600
+        )
+
         _scheduler.start()
-        logger.info("✅ Scheduler started — 5 jobs registered")
+        logger.info("✅ Scheduler started — 6 jobs registered")
         return _scheduler
 
     except Exception as e:
         logger.error(f"❌ Failed to start scheduler: {e}")
         raise
+
+async def _job_anniversary_messages(db):
+    """Send anniversary greetings to patients with anniversary today."""
+    try:
+        from app.models.patient import Patient
+        from app.models.clinic import Clinic
+        from app.services.whatsapp_service import send_anniversary_message
+
+        today = datetime.now(IST).date()
+        logger.info(f"💍 Anniversary messages for {today}")
+
+        patients = db.query(Patient).filter(
+            Patient.is_active == True,
+            Patient.phone_mobile != None,
+            Patient.whatsapp_opted_out == False,
+            Patient.anniversary != None,
+        ).all()
+
+        sent = 0
+        for patient in patients:
+            if not patient.anniversary:
+                continue
+            if (patient.anniversary.month == today.month and
+                    patient.anniversary.day == today.day):
+
+                clinic = db.query(Clinic).filter(
+                    Clinic.id == patient.clinic_id
+                ).first()
+
+                await send_anniversary_message(
+                    phone=patient.phone_mobile,
+                    patient_name=f"{patient.first_name} {patient.last_name or ''}".strip(),
+                    clinic_name=clinic.name if clinic else "Clinic",
+                    language=patient.language_pref or "en",
+                )
+                sent += 1
+
+        logger.info(f"✅ Anniversary messages sent: {sent}")
+
+    except Exception as e:
+        logger.error(f"❌ _job_anniversary_messages failed: {e}")
+
+
+def run_anniversary_messages():
+    """9:00 AM — send anniversary greetings"""
+    _run_async_job(_job_anniversary_messages, "anniversary_messages")
