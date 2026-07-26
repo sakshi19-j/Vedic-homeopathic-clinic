@@ -429,64 +429,42 @@ async def send_visit_thank_you(
 # =====================================================
 
 async def send_birthday_message(
-
     phone: str,
-
     patient_name: str,
-
     clinic_name: str,
-
-    language: str = "en"
+    doctor_name: str = "",
+    language: str = "en",
+    db=None,
+    clinic_id: str = None,
+    patient_id: str = None
 ):
-
     formatted_phone = normalize_phone(phone)
-
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
     }
-
     payload = {
         "messaging_product": "whatsapp",
         "to": formatted_phone,
         "type": "template",
         "template": {
             "name": "birthday_message",
-            "language": {
-                "code": language
-            },
+            "language": {"code": language},
             "components": [
                 {
                     "type": "body",
                     "parameters": [
-                        {
-                            "type": "text",
-                            "text": patient_name
-                        }
+                        {"type": "text", "text": patient_name},
+                        {"type": "text", "text": clinic_name}
                     ]
                 }
             ]
         }
     }
-
     try:
-
-        response = requests.post(
-            WHATSAPP_API_URL,
-            headers=headers,
-            json=payload
-        )
-
+        response = requests.post(WHATSAPP_API_URL, headers=headers, json=payload)
     except Exception as e:
-
-        return {
-
-            "status":"failed",
-
-            "error":str(e)
-
-        }
-
+        return {"status": "failed", "error": str(e)}
     return response.json()
 
 # =====================================================

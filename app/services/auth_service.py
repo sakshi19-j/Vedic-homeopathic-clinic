@@ -209,7 +209,7 @@ def signup_clinic(
 
         "message":
             "Clinic account created successfully. "
-            "30-day trial activated."
+            "14-day trial activated."
     }
 
 
