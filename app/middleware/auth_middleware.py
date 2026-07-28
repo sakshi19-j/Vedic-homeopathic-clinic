@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.clinic import Clinic
-
+from app.config.plan_limits import get_plan_limits
 logger = logging.getLogger(__name__)
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -398,9 +398,7 @@ def require_plan(minimum_plan: str):
                 detail="Clinic not found"
             )
 
-        current_plan = (
-            clinic.subscription_plan or "trial"
-        ).lower()
+        current_plan = (clinic.plan_id or "starter").lower()
 
         required_plan = (
             minimum_plan.lower()
@@ -519,11 +517,7 @@ def check_staff_limit(
     if not clinic:
         return current_user
 
-    max_staff = (
-        clinic.max_staff
-        if clinic.max_staff is not None
-        else 0
-    )
+    max_staff = clinic.staff_limit if clinic.staff_limit is not None else 2
 
     if max_staff == -1:
         return current_user
@@ -577,3 +571,13 @@ def check_staff_limit(
         )
 
     return current_user
+
+def require_feature(feature: str):
+    def checker(current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+        from app.models.clinic import Clinic
+        clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+        limits = get_plan_limits(clinic.plan_id if clinic else "starter")
+        if not limits.get(feature, False):
+            raise HTTPException(403, f"Upgrade your plan to use {feature.replace('_', ' ')}.")
+        return current_user
+    return checker
