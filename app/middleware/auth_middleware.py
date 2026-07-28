@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.clinic import Clinic
-from app.config.plan_limits import get_plan_limits
+from app.plan_limits import get_plan_limits
 logger = logging.getLogger(__name__)
 
 IST = pytz.timezone("Asia/Kolkata")
