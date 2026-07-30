@@ -239,3 +239,10 @@ class Clinic(BaseModel):
         Boolean,
         default=True
     )
+
+    def get_notification_settings(self) -> dict:
+        return {
+            "birthday_greetings": True,
+            "appointment_reminder": True,
+            "missed_reengagement": True,
+        }
