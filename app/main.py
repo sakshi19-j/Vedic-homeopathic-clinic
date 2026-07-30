@@ -41,6 +41,8 @@ from app.jobs.reminder_cron import (
     start_scheduler
 )
 
+from app.middleware.csrf_middleware import CSRFMiddleware
+
 from app.routers.billing_subscription import (
     router as subscription_router
 )
@@ -120,6 +122,13 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=86400,
+)
+
+app.add_middleware(
+    CSRFMiddleware,
+    cookie_name="csrf_token",
+    header_name="X-CSRF-Token",
+    same_site="lax",
 )
 
 logger.info(f"CORS origins loaded: {allowed_origins}")
