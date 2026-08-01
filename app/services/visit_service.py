@@ -178,7 +178,7 @@ def get_visit(
     ).first()
 
     medicines = db.query(Medicine).filter(
-        Medicine.visit_id == visit.id
+        Medicine.visit_id == visit_id
     ).all()
 
     followup = db.query(FollowUp).filter(

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -42,6 +42,7 @@ from app.jobs.reminder_cron import (
 )
 
 from app.middleware.csrf_middleware import CSRFMiddleware
+from app.middleware.auth_middleware import check_subscription_with_grace
 
 from app.routers.billing_subscription import (
     router as subscription_router
@@ -139,22 +140,40 @@ logger.info(f"CORS origins loaded: {allowed_origins}")
 # =====================================================
 
 app.include_router(auth.router)
-app.include_router(patients.router)
-app.include_router(visits.router)
-app.include_router(billing.router)
+app.include_router(
+    patients.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
+app.include_router(
+    visits.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
+app.include_router(
+    billing.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
 app.include_router(analytics.router)
 app.include_router(reminders.router)
-app.include_router(queue.router)
+app.include_router(
+    queue.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
 app.include_router(webhook_router)
 app.include_router(whatsapp_send_router)
-app.include_router(prescriptions.router)
+app.include_router(
+    prescriptions.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
 app.include_router(staff.router)
 app.include_router(appointments.router)
 app.include_router(imports.router)
 app.include_router(health_router)
 app.include_router(subscription_router)
 app.include_router(audit_router)
-app.include_router(medicines.router)
+app.include_router(
+    medicines.router,
+    dependencies=[Depends(check_subscription_with_grace)]
+)
 app.include_router(doctor_profile.router)
 app.include_router(exports.router)
 app.include_router(

@@ -72,7 +72,7 @@ def signup_clinic(
 
     trial_end = (
         datetime.now(IST)
-        + timedelta(days=14)
+        + timedelta(days=30)
     )
 
     clinic = Clinic(
@@ -209,7 +209,7 @@ def signup_clinic(
 
         "message":
             "Clinic account created successfully. "
-            "14-day trial activated."
+            "30-day trial activated."
     }
 
 
