@@ -172,11 +172,19 @@ def get_todays_queue(
 
     result = []
 
+    patient_ids = [e.patient_id for e in entries if e.patient_id]
+    patients_by_id = {}
+    if patient_ids:
+        patients = db.query(Patient).filter(
+            Patient.id.in_(patient_ids)
+        ).all()
+        patients_by_id = {
+            patient.id: patient for patient in patients
+        }
+
     for e in entries:
 
-        patient = db.query(Patient).filter(
-            Patient.id == e.patient_id
-        ).first()
+        patient = patients_by_id.get(e.patient_id)
 
         wait_mins = None
 
