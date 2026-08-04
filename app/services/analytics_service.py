@@ -225,7 +225,7 @@ def followups_due_today(
     clinic_id: str
 ):
 
-    today = datetime.utcnow().date()
+    today = datetime.now(IST).date()
 
     followups = db.query(
         FollowUp
