@@ -44,7 +44,8 @@ def create_patient(
     patient = patient_service.create_patient(
         db,
         data,
-        current_user.clinic_id
+        current_user.clinic_id,
+        current_user.id
     )
 
     # ─────────────────────────────────────────────
@@ -135,6 +136,7 @@ def create_patient(
             if patient.last_visit_date
             else None
         ),
+        "added_by_staff_name": getattr(patient, "added_by_staff_name", None),
         "last_visit": (
             patient.last_visit_date.strftime("%d-%m-%Y")
             if patient.last_visit_date
@@ -188,7 +190,8 @@ def list_patients(
                     if p.last_visit_date
                     else None
                 ),
-                "is_missed": p.is_missed
+                "is_missed": p.is_missed,
+                "added_by_staff_name": getattr(p, "added_by_staff_name", None)
             }
             for p in patients
         ]
@@ -263,6 +266,7 @@ def get_patient(
             if patient.last_visit_date
             else None
         ),
+        "added_by_staff_name": getattr(patient, "added_by_staff_name", None),
     }
 
 
@@ -336,6 +340,7 @@ def update_patient(
             if patient.last_visit_date
             else None
         ),
+        "added_by_staff_name": getattr(patient, "added_by_staff_name", None),
     }
 
 

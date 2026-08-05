@@ -213,48 +213,46 @@ def retention_rate(db: Session, clinic_id: str):
 
 
 # ─────────────────────────────────────────────
-# FOLLOWUPS DUE TODAY
+# FOLLOWUPS SUMMARY
 # ─────────────────────────────────────────────
 
-# =====================================================
-# FOLLOWUPS DUE TODAY
-# =====================================================
-
-def followups_due_today(
-    db: Session,
-    clinic_id: str
-):
-
+def get_followup_pipeline(db: Session, clinic_id: str):
     today = datetime.now(IST).date()
+    open_statuses = [
+        FollowUpStatus.PENDING,
+        FollowUpStatus.SENT,
+        FollowUpStatus.FAILED,
+    ]
 
-    followups = db.query(
-        FollowUp
-    ).filter(
+    open_followups = db.query(FollowUp).filter(
         FollowUp.clinic_id == clinic_id,
-        FollowUp.status == FollowUpStatus.PENDING
+        FollowUp.status.in_(open_statuses)
     ).all()
 
     due_today = [
-
-        f for f in followups
-
-        if (
-            f.due_date
-            and
-            f.due_date <= today
-        )
+        f for f in open_followups
+        if f.due_date and f.due_date.date() == today
+    ]
+    upcoming = [
+        f for f in open_followups
+        if f.due_date and f.due_date.date() > today
+    ]
+    missed = [
+        f for f in open_followups
+        if f.due_date and f.due_date.date() < today
     ]
 
+    completed_count = db.query(FollowUp).filter(
+        FollowUp.clinic_id == clinic_id,
+        FollowUp.status == FollowUpStatus.DONE
+    ).count()
+
     return {
-
-        "date":
-            str(today),
-
-        "count":
-            len(due_today),
-
-        "followups":
-            due_today
+        "due_today": len(due_today),
+        "upcoming": len(upcoming),
+        "missed": len(missed),
+        "completed": completed_count,
+        "due_today_list": due_today,
     }
 
 

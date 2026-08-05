@@ -101,6 +101,7 @@ class PatientResponse(BaseModel):
     last_visit_date: Optional[str]
     patient_value_score: Optional[float]
     is_missed:      Optional[bool]
+    added_by_staff_name: Optional[str] = None
 
     class Config:
         from_attributes = True

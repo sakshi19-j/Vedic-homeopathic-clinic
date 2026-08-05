@@ -31,6 +31,7 @@ def get_dashboard(
     _: User = Depends(check_subscription_with_grace)
 ):
     clinic_id = current_user.clinic_id
+    followup_pipeline = analytics_service.get_followup_pipeline(db, clinic_id)
 
     return {
         "revenue": {
@@ -45,7 +46,7 @@ def get_dashboard(
         },
         "clinical": {
             "top_diseases":         analytics_service.top_diseases(db, clinic_id),
-            "followups_due_today":  analytics_service.followups_due_today(db, clinic_id),
+            "followups_due_today":  followup_pipeline,
         },
         "whatsapp":     analytics_service.whatsapp_delivery_rate(db, clinic_id),
         "intelligence": analytics_service.revenue_lost_estimate(db, clinic_id)
@@ -68,12 +69,14 @@ def summary_today(
     Starter+ access.
     """
     clinic_id = current_user.clinic_id
+    followup_pipeline = analytics_service.get_followup_pipeline(db, clinic_id)
 
     return {
         "daily_revenue":    analytics_service.daily_revenue(db, clinic_id),
         "missed_patients":  analytics_service.missed_patients(db, clinic_id),
         "retention":        analytics_service.retention_rate(db, clinic_id),
-        "followups_today":  analytics_service.followups_due_today(db, clinic_id),
+        "followups_today":  followup_pipeline,
+        "followup_summary": followup_pipeline,
         "top_patients":     analytics_service.top_patients(db, clinic_id, limit=5)
     }
 
@@ -182,7 +185,7 @@ def get_followups_today(
     current_user: User = Depends(get_current_user),
     _: User = Depends(check_subscription_with_grace)
 ):
-    return analytics_service.followups_due_today(db, current_user.clinic_id)
+    return analytics_service.get_followup_pipeline(db, current_user.clinic_id)
 
 # ─────────────────────────────────────────────
 # WHATSAPP DELIVERY RATE
@@ -208,6 +211,8 @@ def export_analytics(
 ):
     clinic_id = current_user.clinic_id
 
+    followup_pipeline = analytics_service.get_followup_pipeline(db, clinic_id)
+
     return {
         "revenue": {
             "today":        analytics_service.daily_revenue(db, clinic_id),
@@ -221,7 +226,7 @@ def export_analytics(
         },
         "clinical": {
             "top_diseases":         analytics_service.top_diseases(db, clinic_id),
-            "followups_due_today":  analytics_service.followups_due_today(db, clinic_id),
+            "followups_due_today":  followup_pipeline,
         },
         "whatsapp":     analytics_service.whatsapp_delivery_rate(db, clinic_id),
         "intelligence": analytics_service.revenue_lost_estimate(db, clinic_id)

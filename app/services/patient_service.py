@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, text, cast, String
 from fastapi import HTTPException, status
@@ -26,13 +27,36 @@ def get_next_reg_no(db: Session, clinic_id: str) -> int:
 
 
 # =====================================================
+# HELPERS
+# =====================================================
+
+def _attach_added_by_staff_name(db: Session, patient: Patient) -> Patient:
+    if not patient.added_by_staff_id:
+        patient.added_by_staff_name = None
+        return patient
+
+    staff_name = db.execute(
+        text("""
+            SELECT full_name
+            FROM public.profiles
+            WHERE id = :staff_id
+        """),
+        {"staff_id": str(patient.added_by_staff_id)}
+    ).scalar()
+
+    patient.added_by_staff_name = staff_name
+    return patient
+
+
+# =====================================================
 # CREATE PATIENT
 # =====================================================
 
 def create_patient(
     db: Session,
     data: PatientCreate,
-    clinic_id: str
+    clinic_id: str,
+    added_by_staff_id: Optional[str] = None
 ) -> Patient:
 
     gender = data.gender.upper() if data.gender else None
@@ -44,6 +68,7 @@ def create_patient(
 
     patient = Patient(
         clinic_id=clinic_id,
+        added_by_staff_id=added_by_staff_id,
         reg_no=get_next_reg_no(db, clinic_id),
         is_active=True,
 
@@ -92,7 +117,7 @@ def create_patient(
         f"Clinic: {clinic_id} | Reg: {patient.reg_no}"
     )
 
-    return patient
+    return _attach_added_by_staff_name(db, patient)
 
 
 # =====================================================
@@ -133,6 +158,9 @@ def get_patients(
         Patient.created_at.desc()
     ).offset(skip).limit(limit).all()
 
+    for patient in patients:
+        _attach_added_by_staff_name(db, patient)
+
     logger.debug(
         f"Patient list: clinic={clinic_id} "
         f"search={search!r} count={len(patients)}"
@@ -163,7 +191,7 @@ def get_patient_by_id(
             detail="Patient not found"
         )
 
-    return patient
+    return _attach_added_by_staff_name(db, patient)
 
 
 # =====================================================
