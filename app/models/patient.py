@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, Boolean, Numeric, Enum as SQLEnum, ForeignKey
+from sqlalchemy import Column, String, Integer, Date, DateTime, Boolean, Numeric, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 import enum
@@ -31,7 +31,7 @@ class Patient(BaseModel):
 
     clinic_id = Column(String, nullable=False, index=True)
     reg_no = Column(Integer, nullable=False)
-    added_by_staff_id = Column(String, ForeignKey("profiles.id"), nullable=True)
+    added_by_staff_id = Column(String, nullable=True)
 
     title = Column(String, nullable=True)
     first_name = Column(String, nullable=False)

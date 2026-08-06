@@ -224,6 +224,10 @@ def get_todays_reminders(
         .options(joinedload(FollowUp.patient))
         .filter(
             FollowUp.clinic_id == clinic_id,
+            FollowUp.status.in_([
+                FollowUpStatus.PENDING,
+                FollowUpStatus.SENT,
+            ]),
             FollowUp.due_date >= today_start,
             FollowUp.due_date <= today_end,
         )

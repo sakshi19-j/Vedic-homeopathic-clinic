@@ -218,12 +218,33 @@ def get_followup_stats(
             FollowUp.status == status
         ).count()
 
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
+
+    today_start = datetime(
+        today.year,
+        today.month,
+        today.day,
+        0,
+        0,
+        0
+    )
+    today_end = datetime(
+        today.year,
+        today.month,
+        today.day,
+        23,
+        59,
+        59
+    )
 
     due_today = db.query(FollowUp).filter(
         FollowUp.clinic_id == current_user.clinic_id,
-        FollowUp.status == FollowUpStatus.PENDING,
-        func.date(FollowUp.due_date) <= today
+        FollowUp.status.in_([
+            FollowUpStatus.PENDING,
+            FollowUpStatus.SENT,
+        ]),
+        FollowUp.due_date >= today_start,
+        FollowUp.due_date <= today_end
     ).count()
 
     return {
