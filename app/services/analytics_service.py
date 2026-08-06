@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import pytz
 
 from app.models.visit import Visit, PaymentStatus
@@ -216,6 +216,10 @@ def retention_rate(db: Session, clinic_id: str):
 # FOLLOWUPS SUMMARY
 # ─────────────────────────────────────────────
 
+def _as_date(value):
+    return value.date() if hasattr(value, "date") and not isinstance(value, date) else value
+
+
 def get_followup_pipeline(db: Session, clinic_id: str):
     today = datetime.now(IST).date()
     open_statuses = [
@@ -231,15 +235,15 @@ def get_followup_pipeline(db: Session, clinic_id: str):
 
     due_today = [
         f for f in open_followups
-        if f.due_date and f.due_date.date() == today
+        if f.due_date and _as_date(f.due_date) == today
     ]
     upcoming = [
         f for f in open_followups
-        if f.due_date and f.due_date.date() > today
+        if f.due_date and _as_date(f.due_date) > today
     ]
     missed = [
         f for f in open_followups
-        if f.due_date and f.due_date.date() < today
+        if f.due_date and _as_date(f.due_date) < today
     ]
 
     completed_count = db.query(FollowUp).filter(
