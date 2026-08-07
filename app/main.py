@@ -25,7 +25,8 @@ from app.routers import (
     prescriptions,
     staff,
     appointments,
-    imports
+    imports,
+    superadmin
 )
 
 from app.routers.health import (
@@ -167,6 +168,7 @@ app.include_router(
 app.include_router(staff.router)
 app.include_router(appointments.router)
 app.include_router(imports.router)
+app.include_router(superadmin.router)
 app.include_router(health_router)
 app.include_router(subscription_router)
 app.include_router(audit_router)

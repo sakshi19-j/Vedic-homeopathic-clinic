@@ -282,7 +282,12 @@ def admin_only(
     current_user: CurrentUser = Depends(get_current_user)
 ) -> CurrentUser:
 
-    if current_user.role != "admin":
+    allowed = (
+        "admin",
+        "super_admin"
+    )
+
+    if current_user.role not in allowed:
         raise HTTPException(
             status_code=403,
             detail={
@@ -302,7 +307,8 @@ def doctor_only(
     allowed = (
         "allopathy",
         "homeopathy",
-        "admin"
+        "admin",
+        "super_admin"
     )
 
     if current_user.role not in allowed:
@@ -324,6 +330,7 @@ def receptionist_or_doctor(
 
     allowed = (
         "admin",
+        "super_admin",
         "reception",
         "allopathy",
         "homeopathy"
@@ -359,6 +366,56 @@ def block_receptionist_from_revenue(
         )
 
     return current_user
+
+
+def require_role(role: str):
+
+    def checker(
+        current_user: CurrentUser = Depends(get_current_user)
+    ) -> CurrentUser:
+
+        role_allowlist = {
+            "super_admin": (
+                "super_admin",
+            ),
+            "admin": (
+                "admin",
+                "super_admin"
+            ),
+            "doctor": (
+                "allopathy",
+                "homeopathy",
+                "admin",
+                "super_admin"
+            ),
+            "receptionist_or_doctor": (
+                "admin",
+                "super_admin",
+                "reception",
+                "allopathy",
+                "homeopathy"
+            )
+        }
+
+        allowed = role_allowlist.get(
+            role,
+            (role,)
+        )
+
+        if current_user.role not in allowed:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "message": (
+                        f"{role.replace('_', ' ').title()} access required."
+                    ),
+                    "code": "INSUFFICIENT_ROLE"
+                }
+            )
+
+        return current_user
+
+    return checker
 
 
 # =====================================================
