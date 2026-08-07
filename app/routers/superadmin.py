@@ -76,10 +76,11 @@ def list_clinics(
             COALESCE(revenue.total_revenue, 0) AS total_revenue
         FROM public.clinics c
         LEFT JOIN public.profiles p
-            ON p.clinic_id = c.id
+            ON p.id = c.owner_id
         LEFT JOIN (
             SELECT clinic_id, COUNT(*) AS count
-            FROM public.profiles
+            FROM public.patients
+            WHERE is_active = true
             GROUP BY clinic_id
         ) AS patient_counts
             ON patient_counts.clinic_id = c.id
@@ -90,7 +91,6 @@ def list_clinics(
             GROUP BY clinic_id
         ) AS revenue
             ON revenue.clinic_id = c.id
-        WHERE p.email IS NOT NULL
         """
     )
 
