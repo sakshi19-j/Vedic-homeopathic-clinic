@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str = ""          # anon key
     SUPABASE_SERVICE_KEY: str = ""  # service role key
+    RESEND_API_KEY: str = ""
 
     # SUPABASE_JWT_SECRET maps to JWT_SECRET
     # Supabase signs tokens with the JWT secret
