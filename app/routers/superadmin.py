@@ -175,7 +175,7 @@ async def create_clinic(
         f"{settings.SUPABASE_URL}/auth/v1/admin/users"
     )
 
-    password = secrets.token_urlsafe(12)
+    generated_password = secrets.token_urlsafe(12)
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -187,7 +187,7 @@ async def create_clinic(
             },
             json={
                 "email": data.doctor_email,
-                "password": password,
+                "password": generated_password,
                 "email_confirm": True,
                 "user_metadata": {
                     "full_name": data.doctor_name,
@@ -261,19 +261,20 @@ async def create_clinic(
     email_result = await _send_superadmin_welcome_email(
         doctor_email=data.doctor_email,
         doctor_name=data.doctor_name,
-        password=password,
+        password=generated_password,
         clinic_name=data.clinic_name
     )
 
     return {
-        "message": "Clinic created successfully",
         "clinic_id": user_id,
-        "owner_id": user_id,
         "owner_email": data.doctor_email,
+        "generated_password": generated_password,
+        "email_sent": email_result.get("status") == "sent",
+        "message": "Clinic created successfully",
+        "owner_id": user_id,
         "plan": plan_id,
         "subscription_status": "trial",
         "trial_end_date": str(trial_end_date),
-        "password": password,
         "email_status": email_result.get("status"),
         "email_error": email_result.get("error") if email_result.get("status") != "sent" else None
     }
