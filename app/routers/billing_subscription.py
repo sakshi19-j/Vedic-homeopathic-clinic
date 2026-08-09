@@ -178,10 +178,10 @@ def get_subscription_status(
     return {
 
         "subscription_status":
-            clinic.subscription_status,
+            (clinic.subscription_status or "").upper(),
 
         "plan":
-            clinic.subscription_plan or "trial",
+            (clinic.subscription_plan or "trial").upper(),
 
         "trial_end_date":
             clinic.trial_end_date,
