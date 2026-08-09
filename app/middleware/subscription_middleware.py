@@ -18,7 +18,7 @@ def require_active_subscription(
     if not clinic:
         raise HTTPException(404, "Clinic not found")
 
-    status = clinic.subscription_status
+    status = (clinic.subscription_status or "").upper()
 
     if status == "ACTIVE":
         return current_user

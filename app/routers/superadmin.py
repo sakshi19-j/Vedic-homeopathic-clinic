@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
@@ -175,7 +176,10 @@ async def create_clinic(
         f"{settings.SUPABASE_URL}/auth/v1/admin/users"
     )
 
-    generated_password = secrets.token_urlsafe(12)
+    first_name = data.doctor_name.strip().split()[0] if data.doctor_name else "Doctor"
+    safe_name = re.sub(r'[^A-Za-z]', '', first_name).capitalize() or "Doctor"
+    random_suffix = secrets.token_urlsafe(6)
+    generated_password = f"{safe_name}@{random_suffix}"
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
