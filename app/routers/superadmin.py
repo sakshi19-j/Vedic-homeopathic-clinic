@@ -209,7 +209,7 @@ async def create_clinic(
     requested_plan = (data.plan or "starter").strip().lower()
     plan_id = requested_plan if requested_plan else "starter"
 
-    trial_end_date = datetime.utcnow() + timedelta(days=30)
+    trial_end_date = datetime.utcnow() + timedelta(days=15)
 
     # Insert clinic
     db.execute(
