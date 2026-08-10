@@ -75,8 +75,9 @@ def add_to_queue(
             Queue.queue_date == today,
             Queue.status.in_([
                 "WAITING",
+                "CHECKED_IN",
                 "IN_TREATMENT",
-                "WAITING_BILLING"
+                "BILLING_PENDING"
             ])
         )
     ).first()

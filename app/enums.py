@@ -30,13 +30,17 @@ class QueueStatus(str, Enum):
 
     WAITING = "WAITING"
 
+    CHECKED_IN = "CHECKED_IN"
+
     IN_TREATMENT = "IN_TREATMENT"
 
-    WAITING_BILLING = "WAITING_BILLING"
+    BILLING_PENDING = "BILLING_PENDING"
 
     COMPLETED = "COMPLETED"
 
     NO_SHOW = "NO_SHOW"
+
+    CANCELLED = "CANCELLED"
 
 class VisitTypeQueue(str, Enum):
     WALKIN      = "WALKIN"
