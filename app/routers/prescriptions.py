@@ -17,7 +17,9 @@ from app.services.prescription_service import (
 )
 
 from app.middleware.auth_middleware import (
-    doctor_only
+    doctor_only,
+    CurrentUser,
+    check_subscription_with_grace
 )
 
 from app.models.user import User
@@ -46,9 +48,8 @@ router = APIRouter(
 async def create_prescription(
      visit_id: str,
      db: Session = Depends(get_db),
-     current_user: User = Depends(
-        doctor_only
-    )
+     _: CurrentUser = Depends(check_subscription_with_grace),
+     current_user: CurrentUser = Depends(doctor_only)
 ):
      # PDF only — does NOT message the patient.
      # Use /send/{visit_id} to deliver via WhatsApp.
@@ -71,7 +72,8 @@ async def download_prescription(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(
+    _: CurrentUser = Depends(check_subscription_with_grace),
+    current_user: CurrentUser = Depends(
         doctor_only
     )
 ):
@@ -154,7 +156,8 @@ async def send_prescription_whatsapp(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(
+    _: CurrentUser = Depends(check_subscription_with_grace),
+    current_user: CurrentUser = Depends(
         doctor_only
     )
 ):

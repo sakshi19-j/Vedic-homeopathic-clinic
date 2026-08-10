@@ -320,27 +320,31 @@ async def send_due_reminders_async(
                     "mocked"
                 ):
 
-                    followup.status   = FollowUpStatus.SENT
-                    followup.sent_at  = datetime.now(IST)
-                    followup.response = result.get(
-                        "message_id",
-                        ""
+                    followup.status    = FollowUpStatus.SENT
+                    followup.sent_at   = datetime.now(IST)
+                    followup.message_id = result.get("message_id")
+                    followup.response   = result.get(
+                        "response",
+                        result.get("message_id", "")
                     )
 
                     sent += 1
 
                 else:
 
-                    followup.status   = FollowUpStatus.FAILED
-                    followup.response = result.get(
+                    followup.status    = FollowUpStatus.FAILED
+                    followup.message_id = None
+                    followup.response   = result.get(
                         "error",
                         "unknown"
                     )
 
                     failed += 1
+
+                db.add(followup)
                 visit = followup.visit
 
-                if visit:
+                if visit and result.get("status") in ("sent", "mocked"):
                     visit.followup_reminder_sent = True
                     db.add(visit)
 
@@ -473,23 +477,31 @@ async def send_single_reminder(
         }
     if result.get("status") in ("sent", "mocked"):
 
-        followup.status   = FollowUpStatus.SENT
-        followup.sent_at  = datetime.now(IST)
-        followup.response = result.get(
-            "message_id",
-            ""
+        followup.status     = FollowUpStatus.SENT
+        followup.sent_at    = datetime.now(IST)
+        followup.message_id = result.get("message_id")
+        followup.response   = result.get(
+            "response",
+            result.get("message_id", "")
         )
 
+        if followup.visit:
+            followup.visit.followup_reminder_sent = True
+            db.add(followup.visit)
+
+        db.add(followup)
         db.commit()
 
     else:
 
-        followup.status   = FollowUpStatus.FAILED
-        followup.response = result.get(
+        followup.status     = FollowUpStatus.FAILED
+        followup.message_id = None
+        followup.response   = result.get(
             "error",
             "unknown"
         )
 
+        db.add(followup)
         db.commit()
 
     return {

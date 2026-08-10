@@ -161,10 +161,7 @@ app.include_router(
 )
 app.include_router(webhook_router)
 app.include_router(whatsapp_send_router)
-app.include_router(
-    prescriptions.router,
-    dependencies=[Depends(check_subscription_with_grace)]
-)
+app.include_router(prescriptions.router)
 app.include_router(staff.router)
 app.include_router(appointments.router)
 app.include_router(imports.router)
