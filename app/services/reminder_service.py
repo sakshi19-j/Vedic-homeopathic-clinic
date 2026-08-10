@@ -465,9 +465,13 @@ async def send_single_reminder(
             trigger       = followup.type.value if followup.type else "followup_reminder"
         )
 
+        print(f"REMINDER SEND RESULT: {result}")
+
     except Exception as e:
 
         import traceback
+
+        print(f"REMINDER SEND EXCEPTION: {traceback.format_exc()}")
 
         print(traceback.format_exc())
 
