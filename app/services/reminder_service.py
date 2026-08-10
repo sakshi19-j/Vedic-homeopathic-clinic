@@ -323,10 +323,10 @@ async def send_due_reminders_async(
                     followup.status    = FollowUpStatus.SENT
                     followup.sent_at   = datetime.now(IST)
                     followup.message_id = result.get("message_id")
-                    followup.response   = result.get(
+                    followup.response   = str(result.get(
                         "response",
                         result.get("message_id", "")
-                    )
+                    ))
 
                     sent += 1
 
@@ -334,10 +334,10 @@ async def send_due_reminders_async(
 
                     followup.status    = FollowUpStatus.FAILED
                     followup.message_id = None
-                    followup.response   = result.get(
+                    followup.response   = str(result.get(
                         "error",
                         "unknown"
-                    )
+                    ))
 
                     failed += 1
 
@@ -484,10 +484,10 @@ async def send_single_reminder(
         followup.status     = FollowUpStatus.SENT
         followup.sent_at    = datetime.now(IST)
         followup.message_id = result.get("message_id")
-        followup.response   = result.get(
+        followup.response   = str(result.get(
             "response",
             result.get("message_id", "")
-        )
+        ))
 
         if followup.visit:
             followup.visit.followup_reminder_sent = True
@@ -500,10 +500,10 @@ async def send_single_reminder(
 
         followup.status     = FollowUpStatus.FAILED
         followup.message_id = None
-        followup.response   = result.get(
+        followup.response   = str(result.get(
             "error",
             "unknown"
-        )
+        ))
 
         db.add(followup)
         db.commit()
