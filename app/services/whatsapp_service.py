@@ -221,8 +221,10 @@ def _send_template_message(
         "to": formatted_phone,
         "type": "template",
         "template": {
-            "name": template_name,
-            "language": {"code": language},
+            "name": "followup_reminder",
+            "language": {
+                "code": "en_US"
+            },
             "components": [
                 {
                     "type": "body",
