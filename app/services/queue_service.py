@@ -76,8 +76,7 @@ def add_to_queue(
             Queue.status.in_([
                 "WAITING",
                 "IN_TREATMENT",
-                "BILLING_PENDING",
-                "COMPLETED"
+                "WAITING_BILLING"
             ])
         )
     ).first()
