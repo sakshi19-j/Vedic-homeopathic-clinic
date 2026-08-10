@@ -223,7 +223,7 @@ def _send_template_message(
         "template": {
             "name": "followup_reminder",
             "language": {
-                "code": "en_US"
+                "code": "en"
             },
             "components": [
                 {
