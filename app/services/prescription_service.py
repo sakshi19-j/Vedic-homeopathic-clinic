@@ -420,7 +420,11 @@ async def generate_prescription(
                 patient_name=patient.first_name or "Patient",
                 clinic_name=clinic.name or "Your Clinic",
                 prescription_url=secure_url,
-                support_phone=clinic.phone or "Reception"
+                support_phone=clinic.phone or "Reception",
+                db=db,
+                clinic_id=str(clinic.id),
+                patient_id=str(patient.id),
+                trigger="prescription"
             )
             
             logger.info(

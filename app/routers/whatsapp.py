@@ -156,7 +156,10 @@ def _handle_delivery_status(db: Session, status_event: dict):
         ).first()
 
         if not log:
-            logger.warning(f"WhatsAppLog not found for message_id: {message_id}")
+            logger.warning(
+                f"WhatsAppLog not found for message_id: {message_id}: "
+                f"event={status_event}"
+            )
             return
 
         # ✅ IDEMPOTENCY — skip if this status was already recorded
@@ -399,7 +402,14 @@ async def send_message(
     if getattr(patient, "whatsapp_opted_out", False):
         raise HTTPException(400, "Patient has opted out of WhatsApp messages")
 
-    return await send_text_message(patient.phone_mobile, data.message)
+    return await send_text_message(
+        phone=patient.phone_mobile,
+        message=data.message,
+        db=db,
+        clinic_id=str(current_user.clinic_id),
+        patient_id=str(patient.id),
+        trigger="manual_message"
+    )
 
 
 @send_router.post("/send/reminder")
@@ -430,7 +440,11 @@ async def send_reminder(
         clinic_name   = clinic.name        if clinic else "Clinic",
         clinic_phone  = clinic.phone       if clinic else "",
         language      = patient.language_pref or "en",
-        followup_type = data.followup_type
+        followup_type = data.followup_type,
+        db            = db,
+        clinic_id     = str(current_user.clinic_id),
+        patient_id    = str(patient.id),
+        trigger       = data.followup_type or "manual_reminder"
     )
 
 
@@ -461,7 +475,11 @@ async def send_thankyou(
         doctor_name  = clinic.doctor_name if clinic else "Doctor",
         clinic_name  = clinic.name        if clinic else "Clinic",
         clinic_phone = clinic.phone       if clinic else "",
-        language     = patient.language_pref or "en"
+        language     = patient.language_pref or "en",
+        db           = db,
+        clinic_id    = str(current_user.clinic_id),
+        patient_id   = str(patient.id),
+        trigger      = "thankyou"
     )
 
 
@@ -490,7 +508,11 @@ async def send_birthday(
         phone        = patient.phone_mobile,
         patient_name = f"{patient.first_name} {patient.last_name or ''}".strip(),
         clinic_name  = clinic.name        if clinic else "Clinic",
-        language     = patient.language_pref or "en"
+        language     = patient.language_pref or "en",
+        db           = db,
+        clinic_id    = str(current_user.clinic_id),
+        patient_id   = str(patient.id),
+        trigger      = "birthday"
     )
 
 

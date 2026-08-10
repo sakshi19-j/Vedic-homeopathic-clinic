@@ -166,6 +166,7 @@ def get_due_reminders(
         result.append({
             "followup_id": str(f.id),
             "patient_id": str(patient.id),
+            "clinic_id": str(f.clinic_id),
             "patient_name":
                 f"{patient.first_name} "
                 f"{patient.last_name or ''}".strip(),
@@ -302,6 +303,10 @@ async def send_due_reminders_async(
                 reminder_date  = reminder["template_vars"][2],
                 followup_type  = reminder.get("type", ""),
                 language       = reminder.get("language", "en"),
+                db             = db,
+                clinic_id      = reminder.get("clinic_id") or str(reminder.get("clinic_id") or ""),
+                patient_id     = reminder.get("patient_id"),
+                trigger        = reminder.get("type", "followup_reminder")
             )
 
             followup = db.query(FollowUp).filter(
@@ -450,6 +455,10 @@ async def send_single_reminder(
             ),
             followup_type = followup.type.value if followup.type else "",
             language      = patient.language_pref or "en",
+            db            = db,
+            clinic_id     = str(clinic_id),
+            patient_id    = str(patient.id),
+            trigger       = followup.type.value if followup.type else "followup_reminder"
         )
 
     except Exception as e:

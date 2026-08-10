@@ -460,6 +460,10 @@ async def _job_anniversary_messages(db):
                     patient_name=f"{patient.first_name} {patient.last_name or ''}".strip(),
                     clinic_name=clinic.name if clinic else "Clinic",
                     language=patient.language_pref or "en",
+                    db=db,
+                    clinic_id=str(patient.clinic_id),
+                    patient_id=str(patient.id),
+                    trigger="anniversary"
                 )
                 sent += 1
 
