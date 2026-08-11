@@ -212,6 +212,10 @@ def _send_template_message(
     language: str = "en"
 ):
     formatted_phone = normalize_phone(phone)
+
+    valid_language_codes = {"en", "en_US", "en_GB", "hi", "mr"}
+    if language not in valid_language_codes:
+        language = "en"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
