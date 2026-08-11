@@ -325,8 +325,7 @@ async def send_prescription_message(
         parameters=[
             {"type": "text", "text": patient_name},
             {"type": "text", "text": clinic_name},
-            {"type": "text", "text": prescription_url},
-            {"type": "text", "text": support_phone}
+            {"type": "text", "text": prescription_url}
         ],
         template_key="prescription_ready",
         db=db,
