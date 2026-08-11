@@ -221,9 +221,9 @@ def _send_template_message(
         "to": formatted_phone,
         "type": "template",
         "template": {
-            "name": "followup_reminder",
+            "name": template_name,
             "language": {
-                "code": "en"
+                "code": language
             },
             "components": [
                 {
@@ -325,7 +325,8 @@ async def send_prescription_message(
         parameters=[
             {"type": "text", "text": patient_name},
             {"type": "text", "text": clinic_name},
-            {"type": "text", "text": prescription_url}
+            {"type": "text", "text": prescription_url},
+            {"type": "text", "text": support_phone}
         ],
         template_key="prescription_ready",
         db=db,
