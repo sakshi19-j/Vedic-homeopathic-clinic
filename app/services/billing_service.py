@@ -337,20 +337,6 @@ async def generate_receipt(
                 trigger="billing_receipt"
             )
 
-            from app.services.whatsapp_service import (
-                send_thankyou_message
-            )
-
-            await send_thankyou_message(
-                phone=patient.phone_mobile,
-                patient_name=receipt_data.patient_name,
-                clinic_name=receipt_data.clinic_name,
-                db=db,
-                clinic_id=str(patient.clinic_id),
-                patient_id=str(patient.id),
-                trigger="billing_thankyou"
-            )
-
     except Exception as e:
 
         whatsapp_result = {
