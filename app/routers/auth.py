@@ -279,6 +279,73 @@ async def create_staff(
         "clinic_id": current_user.clinic_id
     }
 
+# =====================================================
+# STAFF LOGIN LINK (Admin → Access Receptionist)
+# =====================================================
+
+@router.post("/staff/{user_id}/login-link")
+async def get_staff_login_link(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(admin_only)
+):
+    """
+    Generates a one-time magic login link for a staff member
+    belonging to the same clinic, so the admin can access their
+    dashboard directly without knowing their password.
+    """
+
+    # Confirm target user belongs to the same clinic
+    target = db.execute(
+        text(
+            """
+            SELECT p.email, ur.clinic_id
+            FROM public.profiles p
+            JOIN public.user_roles ur ON ur.user_id = p.id
+            WHERE p.id = :uid
+            LIMIT 1
+            """
+        ),
+        {"uid": user_id}
+    ).fetchone()
+
+    if not target:
+        raise HTTPException(404, "Staff member not found")
+
+    if str(target.clinic_id) != str(current_user.clinic_id):
+        raise HTTPException(403, "Staff member not in your clinic")
+
+    # Call Supabase Admin API to generate a magic login link
+    supabase_admin_url = (
+        f"{settings.SUPABASE_URL}/auth/v1/admin/generate_link"
+    )
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            supabase_admin_url,
+            headers={
+                "apikey": settings.SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "type": "magiclink",
+                "email": target.email
+            }
+        )
+
+    if resp.status_code not in (200, 201):
+        raise HTTPException(400, "Failed to generate login link")
+
+    data = resp.json()
+    action_link = data.get("properties", {}).get("action_link") or data.get("action_link")
+
+    if not action_link:
+        raise HTTPException(500, "Login link missing in response")
+
+    logger.info(f"Admin {current_user.id} generated login link for staff {user_id}")
+
+    return {"login_link": action_link}
 
 # =====================================================
 # USAGE STATS
